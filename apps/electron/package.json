@@ -1,0 +1,33 @@
+{
+  "name": "@packslip/desktop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "PackSlip Desktop shell for offline and local printing workflows.",
+  "author": "PackSlip",
+  "main": "src/main.cjs",
+  "scripts": {
+    "dev": "electron .",
+    "build": "node --check src/main.cjs",
+    "package": "electron-builder",
+    "typecheck": "node --check src/main.cjs",
+    "test": "node --check src/main.cjs"
+  },
+  "dependencies": {
+    "electron-store": "^10.0.0",
+    "node-thermal-printer": "^4.4.3"
+  },
+  "devDependencies": {
+    "electron": "32.0.1",
+    "electron-builder": "^25.0.5"
+  },
+  "build": {
+    "appId": "com.packslip.desktop",
+    "productName": "PackSlip Desktop",
+    "files": [
+      "src/**/*"
+    ],
+    "directories": {
+      "output": "release"
+    }
+  }
+}

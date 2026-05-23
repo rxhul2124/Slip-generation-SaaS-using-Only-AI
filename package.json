@@ -1,0 +1,33 @@
+{
+  "name": "packslip",
+  "version": "1.0.0",
+  "private": true,
+  "description": "PackSlip - enterprise packing slip, label generation, pagination, printing, and SaaS workflow platform.",
+  "type": "module",
+  "workspaces": [
+    "apps/api",
+    "apps/web",
+    "apps/electron",
+    "packages/shared"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm:dev --workspace apps/api\" \"npm:dev --workspace apps/web\"",
+    "dev:api": "npm run dev --workspace apps/api",
+    "dev:web": "npm run dev --workspace apps/web",
+    "desktop": "npm run dev --workspace apps/electron",
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "seed": "node scripts/seed.mjs",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "prettier": "^3.3.3"
+  },
+  "engines": {
+    "node": ">=20.11.0",
+    "npm": ">=10.0.0"
+  }
+}

@@ -1,0 +1,9 @@
+node_modules
+apps/web/dist
+apps/electron/release
+coverage
+.git
+.env
+*.log
+uploads
+tmp

@@ -1,0 +1,31 @@
+import { Router } from "express";
+import { authRouter } from "./auth.routes.js";
+import { productRouter } from "./product.routes.js";
+import { customerRouter } from "./customer.routes.js";
+import { templateRouter } from "./template.routes.js";
+import { presetRouter } from "./preset.routes.js";
+import { slipRouter } from "./slip.routes.js";
+import { analyticsRouter } from "./analytics.routes.js";
+import { auditRouter } from "./audit.routes.js";
+import { teamRouter } from "./team.routes.js";
+import { billingRouter } from "./billing.routes.js";
+import { settingsRouter } from "./settings.routes.js";
+import { backupRouter } from "./backup.routes.js";
+import { searchRouter } from "./search.routes.js";
+
+export const router = Router();
+
+router.get("/health", (_req, res) => res.json({ status: "ok", service: "packslip-api" }));
+router.use("/auth", authRouter);
+router.use("/products", productRouter);
+router.use("/customers", customerRouter);
+router.use("/templates", templateRouter);
+router.use("/presets", presetRouter);
+router.use("/slips", slipRouter);
+router.use("/analytics", analyticsRouter);
+router.use("/audit-logs", auditRouter);
+router.use("/team", teamRouter);
+router.use("/billing", billingRouter);
+router.use("/settings", settingsRouter);
+router.use("/backups", backupRouter);
+router.use("/search", searchRouter);
