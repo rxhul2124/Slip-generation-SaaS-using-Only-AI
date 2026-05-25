@@ -6,10 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, Td, Th } from "@/components/ui/table";
 import { resources } from "@/lib/api";
-import { sampleBackups } from "@/lib/sampleData";
 import type { Backup } from "@/lib/types";
 import { useBackups } from "@/lib/useWarehouseData";
 import { useNotificationStore } from "@/stores/notificationStore";
+import { FeatureGate, UpgradeBadge } from "@/components/billing/FeatureGate";
 
 export function BackupsPage() {
   const backups = useBackups();
@@ -31,13 +31,14 @@ export function BackupsPage() {
         createdAt: new Date().toISOString(),
         completedAt: new Date().toISOString()
       };
-      queryClient.setQueryData<Backup[]>(["backups"], (current) => [localBackup, ...(current || sampleBackups)]);
+      queryClient.setQueryData<Backup[]>(["backups"], (current) => [localBackup, ...(current || [])]);
       notify({ tone: "warning", title: "Local backup created", body: "The API is offline, so this backup record was saved in the browser session." });
       void error;
     }
   });
 
   return (
+    <FeatureGate feature="backups" title="Cloud backups" body="Workspace exports and backups are available on Pro and Enterprise plans." minimum="Pro">
     <>
       <PageHeader
         eyebrow="Continuity"
@@ -49,7 +50,7 @@ export function BackupsPage() {
               <RotateCcw className="h-4 w-4" /> Restore
             </Button>
             <Button onClick={() => createBackup.mutate()} disabled={createBackup.isPending}>
-              <CloudUpload className="h-4 w-4" /> Export Workspace
+              <CloudUpload className="h-4 w-4" /> Export Workspace <UpgradeBadge label="Pro" />
             </Button>
           </>
         }
@@ -100,5 +101,6 @@ export function BackupsPage() {
         </CardContent>
       </Card>
     </>
+    </FeatureGate>
   );
 }

@@ -11,6 +11,7 @@ import { AuditLog } from "../models/AuditLog.js";
 import { AppError } from "../utils/AppError.js";
 import { hashToken, randomToken, signAccessToken, signRefreshToken } from "../utils/tokens.js";
 import { sendMail } from "../utils/mailer.js";
+import { limitsFor } from "../config/planLimits.js";
 
 function slugify(value) {
   const base = value
@@ -21,7 +22,22 @@ function slugify(value) {
   return `${base}-${nanoid(6)}`;
 }
 
-async function issueTokens(user, companyId, req, rememberMe = false) {
+async function enforceSessionLimit(userId, companyId, companyPlan) {
+  let limit = limitsFor(companyPlan).sessions;
+  if (companyPlan === "enterprise") {
+    limit = await User.countDocuments({ "memberships.company": companyId, "memberships.status": { $in: ["active", "invited"] } });
+  }
+  if (limit === Infinity) return;
+
+  const active = await RefreshToken.find({ user: userId, company: companyId, revokedAt: null, expiresAt: { $gt: new Date() } }).sort({ createdAt: -1 });
+  const overflow = active.slice(Math.max(limit - 1, 0));
+  if (overflow.length) {
+    await RefreshToken.updateMany({ _id: { $in: overflow.map((token) => token._id) } }, { revokedAt: new Date() });
+  }
+}
+
+async function issueTokens(user, companyId, req, rememberMe = false, companyPlan = "free") {
+  await enforceSessionLimit(user._id, companyId, companyPlan);
   const refreshId = crypto.randomUUID();
   const refreshToken = signRefreshToken(user, refreshId);
 
@@ -127,7 +143,7 @@ export async function register(payload, req) {
     })
   ]);
 
-  const tokens = await issueTokens(user, company._id, req, payload.rememberMe);
+  const tokens = await issueTokens(user, company._id, req, payload.rememberMe, company.plan);
   return { user, company, tokens, verificationToken };
 }
 
@@ -156,7 +172,7 @@ export async function login({ email, password, rememberMe }, req) {
 
   const companyId = user.currentCompany || user.memberships.find((item) => item.status === "active")?.company;
   const company = await Company.findById(companyId);
-  const tokens = await issueTokens(user, companyId, req, rememberMe);
+  const tokens = await issueTokens(user, companyId, req, rememberMe, company?.plan);
 
   await AuditLog.create({
     company: companyId,
@@ -175,7 +191,8 @@ export async function refresh(refreshToken, req) {
   const stored = await RefreshToken.findOne({ tokenHash, revokedAt: null }).populate("user");
   if (!stored || stored.expiresAt < new Date()) throw new AppError("Refresh token expired", 401);
 
-  const tokens = await issueTokens(stored.user, stored.company, req, stored.rememberMe);
+  const company = await Company.findById(stored.company);
+  const tokens = await issueTokens(stored.user, stored.company, req, stored.rememberMe, company?.plan);
   stored.revokedAt = new Date();
   await stored.save();
 

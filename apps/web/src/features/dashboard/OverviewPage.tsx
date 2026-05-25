@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Td, Th, Table } from "@/components/ui/table";
+import { EmptyState, Td, Th, Table } from "@/components/ui/table";
 import { formatNumber } from "@/lib/utils";
 import { useCustomers, useProducts, useSlips, useTemplates } from "@/lib/useWarehouseData";
 
@@ -67,10 +67,10 @@ export function OverviewPage() {
       />
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard label="Total slips generated" value={formatNumber(slips.data?.length || 0)} icon={Boxes} detail="18% above last week" />
-        <MetricCard label="Total prints" value={formatNumber(totalPrints)} icon={Printer} detail="All print jobs completed" />
-        <MetricCard label="Total exports" value={formatNumber(totalExports)} icon={FileDown} detail="Bulk PDF queue healthy" />
-        <MetricCard label="Active printers" value="4" icon={Activity} detail="2 thermal, 2 office printers" />
+        <MetricCard label="Total slips generated" value={formatNumber(slips.data?.length || 0)} icon={Boxes} detail="No slips generated yet" />
+        <MetricCard label="Total prints" value={formatNumber(totalPrints)} icon={Printer} detail="No print jobs yet" />
+        <MetricCard label="Total exports" value={formatNumber(totalExports)} icon={FileDown} detail="No exports yet" />
+        <MetricCard label="Active printers" value="0" icon={Activity} detail="No printers connected" />
       </div>
 
       <Card className="mt-4">
@@ -85,15 +85,15 @@ export function OverviewPage() {
             <span className="flex items-center gap-2 text-sm font-semibold">
               <Star className="h-4 w-4 text-accent" /> Product
             </span>
-            <span className="text-sm text-muted-foreground">{products.data?.[0]?.name}</span>
+            <span className="text-sm text-muted-foreground">{products.data?.[0]?.name || "No products yet"}</span>
           </div>
           <div className="flex items-center justify-between rounded-md border p-3">
             <span className="text-sm font-semibold">Customer</span>
-            <span className="text-sm text-muted-foreground">{customers.data?.[0]?.name}</span>
+            <span className="text-sm text-muted-foreground">{customers.data?.[0]?.name || "No customers yet"}</span>
           </div>
           <div className="flex items-center justify-between rounded-md border p-3">
             <span className="text-sm font-semibold">Template</span>
-            <span className="text-sm text-muted-foreground">{templates.data?.[0]?.name}</span>
+            <span className="text-sm text-muted-foreground">{templates.data?.[0]?.name || "Default templates"}</span>
           </div>
         </CardContent>
       </Card>
@@ -106,6 +106,7 @@ export function OverviewPage() {
           </div>
         </CardHeader>
         <CardContent>
+          {slips.data?.length ? (
           <div className="overflow-x-auto">
             <Table>
               <thead>
@@ -132,6 +133,9 @@ export function OverviewPage() {
               </tbody>
             </Table>
           </div>
+          ) : (
+            <EmptyState title="No slips generated yet." body="Create your first slip to see recent activity, print counts, and exports here." />
+          )}
         </CardContent>
       </Card>
     </>

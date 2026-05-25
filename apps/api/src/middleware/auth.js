@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
 import { env } from "../config/env.js";
 import { User } from "../models/User.js";
+import { Company } from "../models/Company.js";
 import { AppError } from "../utils/AppError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
@@ -23,8 +24,11 @@ export const requireAuth = asyncHandler(async (req, _res, next) => {
   const requestedCompany = req.headers["x-company-id"] || payload.companyId || user.currentCompany;
   const role = user.roleFor(requestedCompany);
   if (!role) throw new AppError("No active membership for this workspace", 403);
+  const company = await Company.findById(requestedCompany);
+  if (!company) throw new AppError("Workspace not found", 401);
 
   req.user = user;
+  req.company = company;
   req.companyId = requestedCompany.toString();
   req.role = role;
   next();

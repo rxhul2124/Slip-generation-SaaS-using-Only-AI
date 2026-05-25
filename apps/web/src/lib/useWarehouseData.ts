@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { resources } from "./api";
-import { sampleAuditLogs, sampleBackups, sampleCustomers, samplePresets, samplePrintJobs, sampleProducts, sampleSlips, sampleTemplates } from "./sampleData";
+import { sampleTemplates } from "./sampleData";
 import type { Customer, GeneratedSlip, Product } from "./types";
 
 const localSlipsKey = "packslip.localSlips";
@@ -61,14 +61,14 @@ export function useProducts() {
   return useQuery({
     queryKey: ["products"],
     queryFn: async () => {
-      const customers = normalizeCustomers(withFallback((await resources.customers.list()).data, sampleCustomers));
+      const customers = normalizeCustomers((await resources.customers.list()).data || []);
       const customerProducts = customers.flatMap((customer) =>
         productsForCustomer(customer).map((product) => ({ ...product, assignedCustomerIds: [customer._id] }))
       );
-      return customerProducts.length ? customerProducts : sampleProducts;
+      return customerProducts;
     },
-    select: (items) => normalizeProducts(withFallback(items, sampleProducts)),
-    placeholderData: normalizeProducts(sampleProducts),
+    select: (items) => normalizeProducts(items || []),
+    placeholderData: [],
     retry: false
   });
 }
@@ -76,9 +76,9 @@ export function useProducts() {
 export function useCustomers() {
   return useQuery({
     queryKey: ["customers"],
-    queryFn: async () => normalizeCustomers(withFallback((await resources.customers.list()).data, sampleCustomers)),
-    select: (items) => normalizeCustomers(withFallback(items, sampleCustomers)),
-    placeholderData: normalizeCustomers(sampleCustomers),
+    queryFn: async () => normalizeCustomers((await resources.customers.list()).data || []),
+    select: (items) => normalizeCustomers(items || []),
+    placeholderData: [],
     retry: false
   });
 }
@@ -96,9 +96,9 @@ export function useTemplates() {
 export function useSlips() {
   return useQuery({
     queryKey: ["slips"],
-    queryFn: async () => mergeSlips(withFallback((await resources.slips.list()).data, sampleSlips)),
-    select: (items) => mergeSlips(withFallback(items, sampleSlips), []),
-    placeholderData: mergeSlips(sampleSlips),
+    queryFn: async () => mergeSlips((await resources.slips.list()).data || []),
+    select: (items) => mergeSlips(items || [], []),
+    placeholderData: mergeSlips([]),
     retry: false
   });
 }
@@ -106,9 +106,9 @@ export function useSlips() {
 export function usePresets() {
   return useQuery({
     queryKey: ["presets"],
-    queryFn: async () => withFallback((await resources.presets.list()).data, samplePresets),
-    select: (items) => withFallback(items, samplePresets),
-    placeholderData: samplePresets,
+    queryFn: async () => (await resources.presets.list()).data || [],
+    select: (items) => items || [],
+    placeholderData: [],
     retry: false
   });
 }
@@ -118,10 +118,10 @@ export function usePrintJobs() {
     queryKey: ["print-jobs"],
     queryFn: async () => {
       const response = await resources.slips.printJobs();
-      return withFallback(Array.isArray(response.data) ? response.data : [], samplePrintJobs);
+      return Array.isArray(response.data) ? response.data : [];
     },
-    select: (items) => withFallback(items, samplePrintJobs),
-    placeholderData: samplePrintJobs,
+    select: (items) => items || [],
+    placeholderData: [],
     retry: false
   });
 }
@@ -129,9 +129,9 @@ export function usePrintJobs() {
 export function useBackups() {
   return useQuery({
     queryKey: ["backups"],
-    queryFn: async () => withFallback((await resources.backups.list()).data, sampleBackups),
-    select: (items) => withFallback(items, sampleBackups),
-    placeholderData: sampleBackups,
+    queryFn: async () => (await resources.backups.list()).data || [],
+    select: (items) => items || [],
+    placeholderData: [],
     retry: false
   });
 }
@@ -139,9 +139,9 @@ export function useBackups() {
 export function useAuditLogs() {
   return useQuery({
     queryKey: ["audit-logs"],
-    queryFn: async () => withFallback((await resources.audit.list()).data, sampleAuditLogs),
-    select: (items) => withFallback(items, sampleAuditLogs),
-    placeholderData: sampleAuditLogs,
+    queryFn: async () => (await resources.audit.list()).data || [],
+    select: (items) => items || [],
+    placeholderData: [],
     retry: false
   });
 }

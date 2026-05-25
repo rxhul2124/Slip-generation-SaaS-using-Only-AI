@@ -48,8 +48,8 @@ export function Topbar() {
           aria-label="Logout"
           onClick={async () => {
             await logout();
-            notify({ tone: "success", title: "Signed out", body: "You are back at login." });
-            navigate("/login");
+            notify({ tone: "success", title: "Signed out", body: "You are back at the main website." });
+            navigate("/");
           }}
         >
           <LogOut className="h-4 w-4" />

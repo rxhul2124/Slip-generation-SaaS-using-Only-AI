@@ -15,6 +15,10 @@ function valueAt(source: Record<string, unknown>, path?: string) {
 }
 
 function formatElementValue(element: TemplateElement, slip: GeneratedSlip) {
+  if (slip._id === "template-preview-placeholder") {
+    return element.label || element.field || element.type.toUpperCase();
+  }
+
   const source = {
     ...slip,
     generatedDate: new Date(slip.createdAt).toLocaleDateString(),
@@ -41,7 +45,7 @@ function boolStyle(element: TemplateElement, key: string) {
 
 function ElementView({ element, slip }: { element: TemplateElement; slip: GeneratedSlip }) {
   const highlighted = boolStyle(element, "highlight");
-  const borderColor = stringStyle(element, "borderColor", highlighted ? "#f59e0b" : "transparent");
+  const borderColor = stringStyle(element, "borderColor", highlighted ? "#f59e0b" : "#111827");
   const style: CSSProperties = {
     left: mmToCssPx(element.x),
     top: mmToCssPx(element.y),
@@ -53,8 +57,8 @@ function ElementView({ element, slip }: { element: TemplateElement; slip: Genera
     fontWeight: numericStyle(element, "fontWeight", 700),
     color: stringStyle(element, "color", "#000000"),
     backgroundColor: highlighted ? stringStyle(element, "backgroundColor", "#fef3c7") : undefined,
-    border: highlighted || element.style?.borderColor ? `1px solid ${borderColor}` : undefined,
-    padding: highlighted ? "2px 3px" : undefined,
+    border: `1px solid ${borderColor}`,
+    padding: "2px 3px",
     boxSizing: "border-box"
   };
   const value = formatElementValue(element, slip);

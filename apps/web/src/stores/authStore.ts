@@ -32,25 +32,51 @@ interface AuthState {
   setSession: (payload: { user: AuthUser; company: Company; accessToken: string }) => void;
 }
 
-const demoSession = {
-  user: {
-    id: "demo-user",
-    name: "Tanuj Operations",
-    email: "ops@packslip.example",
-    signatureProfile: {
-      fullName: "Tarun",
-      role: "Dispatch Executive",
-      employeeId: "EMP-104",
-      signatureText: "Tarun"
-    }
+const demoSessions: Record<string, Omit<AuthState, "login" | "register" | "logout" | "setSession">> = {
+  "free@packslip.example": {
+    user: { id: "demo-free-user", name: "Free Tier Owner", email: "free@packslip.example" },
+    company: { id: "demo-free-company", name: "Free Tier Workspace", plan: "free" },
+    accessToken: "demo-free-session",
+    role: "owner"
   },
-  company: {
-    id: "demo-company",
-    name: "Fast Tech Fastners",
-    plan: "pro" as const
+  "pro@packslip.example": {
+    user: {
+      id: "demo-pro-user",
+      name: "Pro Tier Owner",
+      email: "pro@packslip.example",
+      signatureProfile: {
+        fullName: "Tarun",
+        role: "Dispatch Executive",
+        employeeId: "EMP-104",
+        signatureText: "Tarun"
+      }
+    },
+    company: { id: "demo-pro-company", name: "Pro Tier Workspace", plan: "pro" },
+    accessToken: "demo-pro-session",
+    role: "owner"
   },
-  accessToken: "demo-local-session",
-  role: "owner"
+  "enterprise@packslip.example": {
+    user: { id: "demo-enterprise-user", name: "Enterprise Owner", email: "enterprise@packslip.example" },
+    company: { id: "demo-enterprise-company", name: "Enterprise Workspace", plan: "enterprise" },
+    accessToken: "demo-enterprise-session",
+    role: "owner"
+  },
+  "ops@packslip.example": {
+    user: {
+      id: "demo-user",
+      name: "Tanuj Operations",
+      email: "ops@packslip.example",
+      signatureProfile: {
+        fullName: "Tarun",
+        role: "Dispatch Executive",
+        employeeId: "EMP-104",
+        signatureText: "Tarun"
+      }
+    },
+    company: { id: "demo-company", name: "Fast Tech Fastners", plan: "pro" },
+    accessToken: "demo-local-session",
+    role: "owner"
+  }
 };
 
 export const useAuthStore = create<AuthState>()(
@@ -72,9 +98,9 @@ export const useAuthStore = create<AuthState>()(
           localStorage.setItem("packslip.accessToken", response.data.accessToken);
           set({ ...response.data, role: "owner" });
         } catch (error) {
-          const isSeededDemo = email === "ops@packslip.example" && password === "ChangeMe123!";
-          if (!isSeededDemo) throw error;
-          localStorage.setItem("packslip.accessToken", demoSession.accessToken);
+          const demoSession = password === "ChangeMe123!" ? demoSessions[email.toLowerCase()] : undefined;
+          if (!demoSession) throw error;
+          localStorage.setItem("packslip.accessToken", demoSession.accessToken || "");
           set(demoSession);
         }
       },

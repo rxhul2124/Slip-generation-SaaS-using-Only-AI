@@ -9,10 +9,11 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Table, Td, Th } from "@/components/ui/table";
 import { resources } from "@/lib/api";
-import { sampleCustomers, samplePresets, sampleProducts, sampleTemplates } from "@/lib/sampleData";
+import { sampleTemplates } from "@/lib/sampleData";
 import type { Preset } from "@/lib/types";
 import { useCustomers, usePresets, useProducts, useTemplates } from "@/lib/useWarehouseData";
 import { useNotificationStore } from "@/stores/notificationStore";
+import { FeatureGate, UpgradeBadge } from "@/components/billing/FeatureGate";
 
 export function PresetsPage() {
   const presets = usePresets();
@@ -21,8 +22,8 @@ export function PresetsPage() {
   const templates = useTemplates();
   const queryClient = useQueryClient();
   const notify = useNotificationStore((state) => state.push);
-  const productOptions = products.data?.length ? products.data : sampleProducts;
-  const customerOptions = customers.data?.length ? customers.data : sampleCustomers;
+  const productOptions = products.data || [];
+  const customerOptions = customers.data || [];
   const templateOptions = templates.data?.length ? templates.data : sampleTemplates;
   const [name, setName] = useState("");
   const [product, setProduct] = useState("");
@@ -58,13 +59,14 @@ export function PresetsPage() {
         tags: ["local", selectedTemplate?.thermalMode ? "thermal" : "sheet"],
         createdAt: new Date().toISOString()
       };
-      queryClient.setQueryData<Preset[]>(["presets"], (current) => [localPreset, ...(current || samplePresets)]);
+      queryClient.setQueryData<Preset[]>(["presets"], (current) => [localPreset, ...(current || [])]);
       notify({ tone: "warning", title: "Preset saved locally", body: "The API is offline, so this preset was saved in the browser session." });
       void error;
     }
   });
 
   return (
+    <FeatureGate feature="presets" title="Slip presets" body="Presets are available on Pro and Enterprise plans." minimum="Pro">
     <>
       <PageHeader
         eyebrow="Reusable Workflows"
@@ -72,7 +74,7 @@ export function PresetsPage() {
         description="Save repeatable customer, product, template, dimension, and print-setting combinations for high-speed dispatch."
         actions={
           <Button onClick={() => createPreset.mutate()} disabled={createPreset.isPending || !name || !product || !customer || !template}>
-            <Plus className="h-4 w-4" /> Save Preset
+            <Plus className="h-4 w-4" /> Save Preset <UpgradeBadge label="Pro" />
           </Button>
         }
       />
@@ -177,5 +179,6 @@ export function PresetsPage() {
         </Card>
       </div>
     </>
+    </FeatureGate>
   );
 }

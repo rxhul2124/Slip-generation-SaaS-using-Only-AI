@@ -2,25 +2,30 @@ import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer,
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useCustomers, useProducts, useTemplates } from "@/lib/useWarehouseData";
-
-const daily = [
-  { label: "08:00", slips: 12 },
-  { label: "10:00", slips: 28 },
-  { label: "12:00", slips: 19 },
-  { label: "14:00", slips: 36 },
-  { label: "16:00", slips: 42 },
-  { label: "18:00", slips: 22 }
-];
+import { useCustomers, useProducts, useSlips, useTemplates } from "@/lib/useWarehouseData";
+import { FeatureGate } from "@/components/billing/FeatureGate";
 
 export function AnalyticsPage() {
   const products = useProducts();
   const customers = useCustomers();
   const templates = useTemplates();
-  const usage = products.data?.map((product, index) => ({ name: product.name, value: [42, 31, 18][index] || 12 })) || [];
+  const slips = useSlips();
+  const daily = ["08:00", "10:00", "12:00", "14:00", "16:00", "18:00"].map((label) => {
+    const hour = Number(label.slice(0, 2));
+    return {
+      label,
+      slips: slips.data?.filter((slip) => new Date(slip.createdAt).getHours() === hour).length || 0
+    };
+  });
+  const usage =
+    products.data?.map((product) => ({
+      name: product.name,
+      value: slips.data?.filter((slip) => slip.product._id === product._id || slip.product.sku === product.sku).length || 0
+    })) || [];
   const colors = ["#0f766e", "#f59e0b", "#64748b"];
 
   return (
+    <FeatureGate feature="analytics" title="Reports" body="Reports and analytics are available on Pro and Enterprise plans." minimum="Pro">
     <>
       <PageHeader
         eyebrow="Reports"
@@ -61,7 +66,7 @@ export function AnalyticsPage() {
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={usage} dataKey="value" nameKey="name" outerRadius={108} label>
+                  <Pie data={usage.filter((item) => item.value > 0)} dataKey="value" nameKey="name" outerRadius={108} label>
                     {usage.map((entry, index) => (
                       <Cell key={entry.name} fill={colors[index % colors.length]} />
                     ))}
@@ -94,5 +99,6 @@ export function AnalyticsPage() {
         </Card>
       </div>
     </>
+    </FeatureGate>
   );
 }

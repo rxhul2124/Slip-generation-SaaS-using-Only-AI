@@ -14,7 +14,6 @@ import { Select } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Table, Td, Th } from "@/components/ui/table";
 import { resources } from "@/lib/api";
-import { sampleProducts } from "@/lib/sampleData";
 import type { Product } from "@/lib/types";
 import { useProducts } from "@/lib/useWarehouseData";
 import { useNotificationStore } from "@/stores/notificationStore";
@@ -68,7 +67,7 @@ export function ProductsPage() {
         fragile: values.fragile,
         hazardous: values.hazardous
       };
-      queryClient.setQueryData<Product[]>(["products"], (current) => [localProduct, ...(current || sampleProducts)]);
+      queryClient.setQueryData<Product[]>(["products"], (current) => [localProduct, ...(current || [])]);
       form.reset();
       notify({ tone: "warning", title: "Saved locally", body: `API unavailable, so ${values.sku} was added to this browser session.` });
       void error;
