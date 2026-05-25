@@ -13,12 +13,13 @@ await connectDatabase();
 
 await Promise.all([
   User.deleteMany({ email: /packslip\.example$/ }),
-  Company.deleteMany({ slug: /^packslip-industrial-demo/ })
+  Company.deleteMany({ slug: /^packslip-(industrial-demo|free-demo|pro-demo|enterprise-demo)/ })
 ]);
 
+async function createWorkspace({ name, email, companyName, slugPrefix, plan, withSampleData = false }) {
 const user = new User({
-  name: "Tanuj Operations",
-  email: "ops@packslip.example",
+  name,
+  email,
   signatureProfile: {
     fullName: "Tarun",
     role: "Dispatch Executive",
@@ -30,15 +31,15 @@ const user = new User({
 await user.setPassword("ChangeMe123!");
 
 const company = await Company.create({
-  name: "Fast Tech Fastners",
-  slug: `packslip-industrial-demo-${Date.now()}`,
+  name: companyName,
+  slug: `${slugPrefix}-${Date.now()}`,
   owner: user._id,
-  plan: "pro",
+  plan,
   onboarding: {
     workspaceCreated: true,
     logoUploaded: false,
-    productsAdded: true,
-    customersAdded: true,
+    productsAdded: withSampleData,
+    customersAdded: withSampleData,
     defaultSlipSizeSelected: true,
     printerConfigured: false
   }
@@ -50,8 +51,11 @@ await user.save();
 
 await Promise.all([
   Settings.create({ company: company._id }),
-  Billing.create({ company: company._id, plan: "pro", provider: "manual" })
+  Billing.create({ company: company._id, plan, provider: "manual" }),
+  SlipTemplate.insertMany(defaultSlipTemplates(company._id, user._id))
 ]);
+
+if (!withSampleData) return { user, company };
 
 const customers = await Customer.insertMany([
   {
@@ -119,7 +123,7 @@ const customers = await Customer.insertMany([
   }
 ]);
 
-const templates = await SlipTemplate.insertMany(defaultSlipTemplates(company._id, user._id));
+const templates = await SlipTemplate.find({ company: company._id }).sort({ createdAt: 1 });
 const template = templates[0];
 const product = customers[0].products[0];
 
@@ -153,9 +157,17 @@ await GeneratedSlip.create({
   printedCount: 2,
   exportedCount: 1
 });
+return { user, company };
+}
+
+await createWorkspace({ name: "Free Tier Owner", email: "free@packslip.example", companyName: "Free Tier Workspace", slugPrefix: "packslip-free-demo", plan: "free" });
+await createWorkspace({ name: "Pro Tier Owner", email: "pro@packslip.example", companyName: "Pro Tier Workspace", slugPrefix: "packslip-pro-demo", plan: "pro", withSampleData: true });
+await createWorkspace({ name: "Enterprise Owner", email: "enterprise@packslip.example", companyName: "Enterprise Workspace", slugPrefix: "packslip-enterprise-demo", plan: "enterprise" });
+await createWorkspace({ name: "Tanuj Operations", email: "ops@packslip.example", companyName: "Fast Tech Fastners", slugPrefix: "packslip-industrial-demo", plan: "pro", withSampleData: true });
 
 console.log("PackSlip seed complete");
-console.log("Email: ops@packslip.example");
-console.log("Password: ChangeMe123!");
+console.log("Free: free@packslip.example / ChangeMe123!");
+console.log("Pro: pro@packslip.example / ChangeMe123!");
+console.log("Enterprise: enterprise@packslip.example / ChangeMe123!");
 
 await mongoose.disconnect();

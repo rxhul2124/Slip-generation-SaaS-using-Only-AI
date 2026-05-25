@@ -12,10 +12,12 @@ import { Input, Textarea } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { EmptyState, Table, Td, Th } from "@/components/ui/table";
 import { resources } from "@/lib/api";
-import { sampleCustomers } from "@/lib/sampleData";
 import type { Customer, Product, QuantityUnit, WeightUnit } from "@/lib/types";
 import { useCustomers } from "@/lib/useWarehouseData";
 import { useNotificationStore } from "@/stores/notificationStore";
+import { useAuthStore } from "@/stores/authStore";
+import { limitsFor } from "@/lib/planLimits";
+import { UpgradeBadge } from "@/components/billing/FeatureGate";
 
 const quantityUnits: QuantityUnit[] = ["NOS", "PCS", "BOX", "KG", "SET"];
 const weightUnits: WeightUnit[] = ["KG", "G", "TON", "LB"];
@@ -233,7 +235,12 @@ function ProductDetail({ product }: { product: Product }) {
 
 export function CustomersPage() {
   const customersQuery = useCustomers();
-  const customers = useMemo(() => (customersQuery.data?.length ? customersQuery.data : sampleCustomers), [customersQuery.data]);
+  const customers = useMemo(() => customersQuery.data || [], [customersQuery.data]);
+  const plan = useAuthStore((state) => state.company?.plan);
+  const limits = limitsFor(plan);
+  const totalProducts = customers.reduce((sum, customer) => sum + (customer.products?.length || 0), 0);
+  const customerLimitReached = limits.customers !== Infinity && customers.length >= limits.customers;
+  const productLimitReached = limits.products !== Infinity && totalProducts >= limits.products;
   const queryClient = useQueryClient();
   const notify = useNotificationStore((state) => state.push);
   const nameRef = useRef<HTMLInputElement | null>(null);
@@ -403,8 +410,8 @@ export function CustomersPage() {
         title="Companies and Products"
         description="Start from the company list, expand products only when needed, and keep company records easy to scan."
         actions={
-          <Button onClick={openCreateCompany}>
-            <UserPlus className="h-4 w-4" /> Add Company
+          <Button onClick={openCreateCompany} disabled={customerLimitReached}>
+            <UserPlus className="h-4 w-4" /> Add Company {customerLimitReached ? <UpgradeBadge label="Pro" /> : null}
           </Button>
         }
       />
@@ -500,8 +507,8 @@ export function CustomersPage() {
                                     <div className="text-sm font-bold">Products</div>
                                     <div className="text-xs text-muted-foreground">Full part information, codes, quantities, and product actions.</div>
                                   </div>
-                                  <Button variant="outline" size="sm" onClick={() => openProductEditor(customer)}>
-                                    <Plus className="h-4 w-4" /> Add Product
+                                  <Button variant="outline" size="sm" disabled={productLimitReached} onClick={() => openProductEditor(customer)}>
+                                    <Plus className="h-4 w-4" /> Add Product {productLimitReached ? <UpgradeBadge label="Pro" /> : null}
                                   </Button>
                                 </div>
 
@@ -617,8 +624,8 @@ export function CustomersPage() {
                         saveLabel={index === newProducts.length - 1 ? "Add Another Product" : "Product Ready"}
                       />
                     ))}
-                    <Button type="button" variant="outline" className="w-full" onClick={() => setNewProducts((current) => [...current, emptyProduct()])}>
-                      <Plus className="h-4 w-4" /> Add Product Row
+                    <Button type="button" variant="outline" className="w-full" disabled={productLimitReached} onClick={() => setNewProducts((current) => [...current, emptyProduct()])}>
+                      <Plus className="h-4 w-4" /> Add Product Row {productLimitReached ? <UpgradeBadge label="Pro" /> : null}
                     </Button>
                   </div>
                 ) : null}

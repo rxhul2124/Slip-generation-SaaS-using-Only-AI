@@ -12,13 +12,16 @@ import { Input, Textarea } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { SegmentedControl } from "@/components/ui/tabs";
 import { resources } from "@/lib/api";
-import { sampleCustomers, sampleTemplate, sampleTemplates } from "@/lib/sampleData";
+import { sampleTemplate, sampleTemplates } from "@/lib/sampleData";
+import { readLocalTemplates } from "@/lib/localTemplates";
 import { formatDimensions, formatQuantityWeight, getSlipTypeDefinition, slipTypeDefinitions } from "@/lib/slipTypes";
 import type { GeneratedSlip, Product, QuantityUnit, SignatureMode, SlipTemplate, SlipType, WeightUnit } from "@/lib/types";
-import { saveLocalSlip, useCustomers, useTemplates } from "@/lib/useWarehouseData";
+import { saveLocalSlip, useCustomers, useSlips, useTemplates } from "@/lib/useWarehouseData";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/authStore";
 import { useNotificationStore } from "@/stores/notificationStore";
+import { limitsFor } from "@/lib/planLimits";
+import { UpgradeBadge } from "@/components/billing/FeatureGate";
 
 const quantityUnits: QuantityUnit[] = ["NOS", "PCS", "BOX", "KG", "SET"];
 const weightUnits: WeightUnit[] = ["KG", "G", "TON", "LB"];
@@ -53,18 +56,6 @@ function defaultSlipCountForTemplate(template?: SlipTemplate) {
 function normalizeWeightUnit(unit?: string): WeightUnit {
   const normalized = (unit || "KG").toUpperCase();
   return weightUnits.includes(normalized as WeightUnit) ? (normalized as WeightUnit) : "KG";
-}
-
-function readLocalTemplateDraft() {
-  try {
-    const raw = localStorage.getItem("packslip.templateDraft");
-    if (!raw) return null;
-    const template = JSON.parse(raw) as SlipTemplate;
-    if (!template?._id || !template?.name || !Array.isArray(template.elements)) return null;
-    return template;
-  } catch {
-    return null;
-  }
 }
 
 function SignaturePad({ value, onChange }: { value?: string; onChange: (value: string) => void }) {
@@ -159,17 +150,16 @@ function SignaturePad({ value, onChange }: { value?: string; onChange: (value: s
 export function GenerateSlipPage() {
   const customers = useCustomers();
   const templates = useTemplates();
+  const slips = useSlips();
   const notify = useNotificationStore((state) => state.push);
   const { user, company } = useAuthStore();
   const queryClient = useQueryClient();
-  const customerOptions = useMemo(() => (customers.data?.length ? customers.data : sampleCustomers), [customers.data]);
-  const [localTemplateDraft, setLocalTemplateDraft] = useState<SlipTemplate | null>(() => readLocalTemplateDraft());
+  const customerOptions = useMemo(() => customers.data || [], [customers.data]);
+  const [localTemplates, setLocalTemplates] = useState<SlipTemplate[]>(() => readLocalTemplates());
   const templateOptions = useMemo(() => {
     const baseTemplates = templates.data?.length ? templates.data : sampleTemplates;
-    if (!localTemplateDraft) return baseTemplates;
-    const draft = { ...localTemplateDraft, name: `${localTemplateDraft.name} (Draft)` };
-    return [draft, ...baseTemplates.filter((template) => template._id !== localTemplateDraft._id)];
-  }, [localTemplateDraft, templates.data]);
+    return [...localTemplates, ...baseTemplates.filter((template) => !localTemplates.some((local) => local._id === template._id))];
+  }, [localTemplates, templates.data]);
   const fileRef = useRef<HTMLInputElement>(null);
   const printRef = useRef<HTMLDivElement>(null);
   const signatureProfile = user?.signatureProfile;
@@ -201,7 +191,9 @@ export function GenerateSlipPage() {
   const selectedProduct = customerProducts.find((item) => item._id === productId);
   const selectedTemplate = templateOptions.find((item) => item._id === templateId);
   const slipTypeDefinition = getSlipTypeDefinition(slipType);
-  const canCreateSlip = Boolean(selectedCustomer && selectedProduct && selectedTemplate && quantity > 0);
+  const slipLimit = limitsFor(company?.plan).slipsPerMonth;
+  const slipLimitReached = slipLimit !== Infinity && (slips.data?.length || 0) >= slipLimit;
+  const canCreateSlip = Boolean(selectedCustomer && selectedProduct && selectedTemplate && quantity > 0 && !slipLimitReached);
   const weightPerPiece = selectedProduct?.weight?.value || 0;
   const totalWeightValue = Number((weightPerPiece * quantity).toFixed(3));
 
@@ -210,18 +202,20 @@ export function GenerateSlipPage() {
   }, [customerProducts, productId]);
 
   useEffect(() => {
-    const refreshDraft = () => setLocalTemplateDraft(readLocalTemplateDraft());
-    window.addEventListener("focus", refreshDraft);
-    window.addEventListener("storage", refreshDraft);
+    const refreshTemplates = () => setLocalTemplates(readLocalTemplates());
+    window.addEventListener("focus", refreshTemplates);
+    window.addEventListener("storage", refreshTemplates);
+    window.addEventListener("packslip:templates-updated", refreshTemplates);
     return () => {
-      window.removeEventListener("focus", refreshDraft);
-      window.removeEventListener("storage", refreshDraft);
+      window.removeEventListener("focus", refreshTemplates);
+      window.removeEventListener("storage", refreshTemplates);
+      window.removeEventListener("packslip:templates-updated", refreshTemplates);
     };
   }, []);
 
   useEffect(() => {
-    if (!templateId && localTemplateDraft) setTemplateId(localTemplateDraft._id);
-  }, [localTemplateDraft, templateId]);
+    if (!templateId && localTemplates[0]) setTemplateId(localTemplates[0]._id);
+  }, [localTemplates, templateId]);
 
   useEffect(() => {
     if (!selectedProduct) return;
@@ -400,7 +394,7 @@ export function GenerateSlipPage() {
               <RotateCcw className="h-4 w-4" /> Reset
             </Button>
             <Button onClick={() => createSlip.mutate()} disabled={createSlip.isPending || !canCreateSlip}>
-              <Save className="h-4 w-4" /> Create Slip
+              <Save className="h-4 w-4" /> Create Slip {slipLimitReached ? <UpgradeBadge label="Pro" /> : null}
             </Button>
           </>
         }

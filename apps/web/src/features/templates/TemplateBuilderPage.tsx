@@ -1,13 +1,13 @@
 import { DndContext, DragEndEvent, useDraggable } from "@dnd-kit/core";
 import { restrictToParentElement } from "@dnd-kit/modifiers";
 import {
+  Bold,
   Copy,
   Grid3X3,
   ImageIcon,
   Lock,
   Maximize2,
   Minus,
-  Palette,
   Plus,
   Redo2,
   RotateCw,
@@ -20,7 +20,7 @@ import {
   Wand2,
   ZoomIn
 } from "lucide-react";
-import { useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { useSearchParams } from "react-router-dom";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Badge } from "@/components/ui/badge";
@@ -28,18 +28,27 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { SegmentedControl } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { SlipRenderer } from "@/components/print/SlipRenderer";
-import { sampleSlips, sampleTemplate, sampleTemplates } from "@/lib/sampleData";
-import type { SlipTemplate, TemplateElement } from "@/lib/types";
+import { sampleTemplate, sampleTemplates } from "@/lib/sampleData";
+import type { GeneratedSlip, SlipTemplate, TemplateElement } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { mmToCssPx } from "@/lib/print/layoutEngine";
 import { useNotificationStore } from "@/stores/notificationStore";
+import { useUiStore } from "@/stores/uiStore";
+import { getLocalTemplate, saveLocalTemplate } from "@/lib/localTemplates";
+import { useAuthStore } from "@/stores/authStore";
+import { hasFeature } from "@/lib/planLimits";
+import { UpgradeBadge } from "@/components/billing/FeatureGate";
 
 const pixelsPerMm = 96 / 25.4;
 const minElementWidth = 8;
 const minElementHeight = 5;
+const printPages = {
+  a4: { label: "A4", width: 210, height: 297 },
+  letter: { label: "Letter", width: 216, height: 279 },
+  thermal: { label: "Thermal roll", width: 80, height: 120 }
+};
 
 const palette: Array<Pick<TemplateElement, "type" | "label" | "field" | "width" | "height">> = [
   { type: "field", label: "Product", field: "product.name", width: 68, height: 12 },
@@ -193,6 +202,45 @@ function editableTemplate(template: SlipTemplate, patch: Partial<SlipTemplate> =
   };
 }
 
+function placeholderSlip(template: SlipTemplate): GeneratedSlip {
+  return {
+    _id: "template-preview-placeholder",
+    serialNumber: "Serial",
+    slipType: "packing",
+    orderReference: "Order Ref.",
+    product: {
+      _id: "placeholder-product",
+      name: "Product",
+      partName: "Part Name",
+      partNumber: "Part No.",
+      sku: "SKU",
+      barcode: "Barcode",
+      qrReference: "QR Code",
+      quantityUnit: "NOS",
+      weight: { value: 0, unit: "KG" }
+    },
+    customer: {
+      _id: "placeholder-customer",
+      name: "Customer",
+      shippingAddress: { city: "Destination" }
+    },
+    template: { ...template, renderer: "template" },
+    companyName: "Company",
+    company: { name: "Company" },
+    quantity: 0,
+    quantityUnit: "NOS",
+    displayWeight: { value: 0, unit: "KG" },
+    destination: "Destination",
+    notes: "Notes",
+    barcodeValue: "Barcode",
+    qrPayload: { placeholder: "QR Code" },
+    status: "draft",
+    printedCount: 0,
+    exportedCount: 0,
+    createdAt: new Date("2026-01-01T00:00:00.000Z").toISOString()
+  };
+}
+
 function DraggableElement({
   element,
   selected,
@@ -225,6 +273,7 @@ function DraggableElement({
   return (
     <div
       ref={setNodeRef}
+      onPointerDownCapture={onSelect}
       onClick={onSelect}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") onSelect();
@@ -260,8 +309,11 @@ function DraggableElement({
 export function TemplateBuilderPage() {
   const [searchParams] = useSearchParams();
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const setSidebarCollapsed = useUiStore((state) => state.setSidebarCollapsed);
+  const plan = useAuthStore((state) => state.company?.plan);
+  const canImportLogo = hasFeature(plan, "logoImport");
   const initialTemplate = useMemo<SlipTemplate>(() => {
-    const requestedTemplate = sampleTemplates.find((item) => item._id === searchParams.get("template")) || sampleTemplate;
+    const requestedTemplate = getLocalTemplate(searchParams.get("template")) || sampleTemplates.find((item) => item._id === searchParams.get("template")) || sampleTemplate;
     if (searchParams.get("duplicate") === "1") {
       return editableTemplate(requestedTemplate, {
         _id: `template-${crypto.randomUUID().slice(0, 8)}`,
@@ -281,12 +333,32 @@ export function TemplateBuilderPage() {
     return editableTemplate(requestedTemplate);
   }, [searchParams]);
   const [template, setTemplate] = useState<SlipTemplate>(initialTemplate);
-  const [selectedId, setSelectedId] = useState(template.elements[0]?.id);
+  const [selectedId, setSelectedId] = useState<string | undefined>(template.elements[0]?.id);
   const [zoom, setZoom] = useState(1.15);
-  const [mode, setMode] = useState<"design" | "preview">("design");
+  const [printPage, setPrintPage] = useState<keyof typeof printPages>("a4");
+  const [slipsPerRow, setSlipsPerRow] = useState(3);
   const [referenceImage, setReferenceImage] = useState<{ src: string; name: string; opacity: number } | null>(null);
   const notify = useNotificationStore((state) => state.push);
   const selected = useMemo(() => template.elements.find((element) => element.id === selectedId), [template, selectedId]);
+  const livePreviewSlip = useMemo(() => placeholderSlip(template), [template]);
+  const selectedPrintPage = printPages[printPage];
+  const printGap = 3;
+  const printMargin = 6;
+  const fittedSlipWidth = Math.max(20, (selectedPrintPage.width - printMargin * 2 - printGap * (slipsPerRow - 1)) / slipsPerRow);
+
+  useEffect(() => {
+    setSidebarCollapsed(true);
+  }, [setSidebarCollapsed]);
+
+  useEffect(() => {
+    if (!template.elements.length) {
+      setSelectedId(undefined);
+      return;
+    }
+    if (!selectedId || !template.elements.some((element) => element.id === selectedId)) {
+      setSelectedId(template.elements[0].id);
+    }
+  }, [selectedId, template.elements]);
 
   const updateElement = (id: string, patch: Partial<TemplateElement>) => {
     setTemplate((current) => ({
@@ -414,6 +486,29 @@ export function TemplateBuilderPage() {
     updateSelectedStyle({ fontSize: clamp(current + delta, 6, 32) });
   };
 
+  const applyPrintPageFit = () => {
+    const ratio = template.height / template.width || 0.62;
+    const nextWidth = Number(fittedSlipWidth.toFixed(1));
+    const nextHeight = Number(Math.max(12, nextWidth * ratio).toFixed(1));
+    const scaleX = nextWidth / template.width;
+    const scaleY = nextHeight / template.height;
+    setTemplate((current) => ({
+      ...current,
+      width: nextWidth,
+      height: nextHeight,
+      format: printPage === "letter" ? "letter" : printPage === "a4" ? "a4" : "custom",
+      pageSize: printPage === "letter" ? "letter" : printPage === "a4" ? "a4" : "custom",
+      orientation: nextWidth > nextHeight ? "landscape" : "portrait",
+      elements: current.elements.map((element) => ({
+        ...element,
+        x: Number((element.x * scaleX).toFixed(1)),
+        y: Number((element.y * scaleY).toFixed(1)),
+        width: Number((element.width * scaleX).toFixed(1)),
+        height: Number((element.height * scaleY).toFixed(1))
+      }))
+    }));
+  };
+
   const createTemplateFromImage = (file: File) => {
     const reader = new FileReader();
     reader.onload = () => {
@@ -534,17 +629,8 @@ export function TemplateBuilderPage() {
       <PageHeader
         eyebrow="Templates"
         title={searchParams.get("template") ? "Edit slip design" : "New slip design"}
-        description="Design reusable packing slips with draggable fields, resize handles, field highlighting, image references, print preview, thermal dimensions, and locked elements."
         actions={
           <>
-            <SegmentedControl
-              value={mode}
-              onChange={setMode}
-              options={[
-                { value: "design", label: "Design" },
-                { value: "preview", label: "Preview" }
-              ]}
-            />
             <Button variant="outline" onClick={() => notify({ tone: "info", title: "Undo", body: "Undo history starts after the next saved edit checkpoint." })}>
               <Undo2 className="h-4 w-4" />
             </Button>
@@ -553,7 +639,7 @@ export function TemplateBuilderPage() {
             </Button>
             <Button
               onClick={() => {
-                localStorage.setItem("packslip.templateDraft", JSON.stringify(template));
+                saveLocalTemplate(template);
                 notify({ tone: "success", title: "Template saved", body: `${template.name} was saved locally.` });
               }}
             >
@@ -563,72 +649,234 @@ export function TemplateBuilderPage() {
         }
       />
 
-      <Card className="mb-4">
-        <CardHeader className="flex-col gap-2 sm:flex-row sm:items-start">
-          <div>
-            <CardTitle>Elements</CardTitle>
-            <CardDescription>Add fields horizontally, then tune the selected field in the inspector.</CardDescription>
-          </div>
-          {referenceImage ? (
-            <Badge variant="muted">
-              <Wand2 className="mr-1 h-3 w-3" /> Image reference
-            </Badge>
-          ) : null}
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <input
-            ref={imageInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              if (file) createTemplateFromImage(file);
-              event.currentTarget.value = "";
-            }}
-          />
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            <Button variant="outline" className="shrink-0" onClick={() => imageInputRef.current?.click()}>
-              <ImageIcon className="h-4 w-4" /> Import slip image
-            </Button>
-            {palette.map((item) => (
-              <Button key={`${item.type}-${item.label}`} variant="outline" className="shrink-0" onClick={() => addElement(item)}>
-                <Plus className="h-4 w-4" /> {item.label}
-              </Button>
-            ))}
-          </div>
-          {referenceImage ? (
-            <div className="grid gap-3 rounded-md border bg-muted/40 p-3 text-xs font-semibold text-muted-foreground sm:grid-cols-[220px_1fr]">
-              <div className="flex min-w-0 items-center gap-2 text-foreground">
-                <Wand2 className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate">{referenceImage.name}</span>
+      <div className="grid items-start gap-3 xl:grid-cols-[300px_minmax(0,1fr)_340px] 2xl:grid-cols-[320px_minmax(0,1fr)_360px]">
+        <div className="space-y-3 self-start xl:sticky xl:top-4 xl:col-start-1 xl:row-start-1">
+          <Card className="self-start">
+            <CardHeader className="gap-1 p-4 pb-2">
+              <div>
+                <CardTitle>Elements</CardTitle>
               </div>
-              <label className="flex items-center gap-3">
-                <span className="shrink-0">Reference opacity</span>
-                <input
-                  className="w-full accent-[hsl(var(--primary))]"
-                  type="range"
-                  min="0.05"
-                  max="0.6"
-                  step="0.05"
-                  value={referenceImage.opacity}
-                  onChange={(event) => setReferenceImage({ ...referenceImage, opacity: Number(event.target.value) })}
-                />
-              </label>
-            </div>
-          ) : null}
-        </CardContent>
-      </Card>
+              {referenceImage ? (
+                <Badge variant="muted" className="w-fit">
+                  <Wand2 className="mr-1 h-3 w-3" /> Image reference
+                </Badge>
+              ) : null}
+            </CardHeader>
+            <CardContent className="space-y-3 p-4 pt-0">
+              <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) createTemplateFromImage(file);
+                  event.currentTarget.value = "";
+                }}
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <Button variant="outline" size="sm" className="col-span-2 justify-start" disabled={!canImportLogo} onClick={() => imageInputRef.current?.click()}>
+                  <ImageIcon className="h-4 w-4" /> Import slip image {!canImportLogo ? <UpgradeBadge label="Pro" /> : null}
+                </Button>
+                {palette.map((item) => (
+                  <Button key={`${item.type}-${item.label}`} variant="outline" size="sm" className="justify-start" onClick={() => addElement(item)}>
+                    <Plus className="h-4 w-4" /> {item.label}
+                  </Button>
+                ))}
+              </div>
+              {referenceImage ? (
+                <div className="space-y-2 rounded-md border bg-muted/40 p-3 text-xs font-semibold text-muted-foreground">
+                  <div className="flex min-w-0 items-center gap-2 text-foreground">
+                    <Wand2 className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">{referenceImage.name}</span>
+                  </div>
+                  <label className="block space-y-1">
+                    <span>Reference opacity</span>
+                    <input
+                      className="w-full accent-[hsl(var(--primary))]"
+                      type="range"
+                      min="0.05"
+                      max="0.6"
+                      step="0.05"
+                      value={referenceImage.opacity}
+                      onChange={(event) => setReferenceImage({ ...referenceImage, opacity: Number(event.target.value) })}
+                    />
+                  </label>
+                </div>
+              ) : null}
 
-      <div className="grid gap-4 xl:grid-cols-[340px_minmax(0,1fr)]">
-        <Card className="self-start xl:sticky xl:top-4">
-          <CardHeader>
+              {selected ? (
+                <div className="space-y-3 border-t pt-3">
+                  <div className="flex items-center justify-between">
+                    <div className="min-w-0 text-sm font-bold">{selected.label || selected.field}</div>
+                    <Badge variant="default">{selected.type}</Badge>
+                  </div>
+
+                  <div className="grid grid-cols-4 gap-2">
+                    {(["x", "y", "width", "height"] as const).map((key) => (
+                      <label key={key} className="space-y-1 text-[10px] font-semibold uppercase text-muted-foreground">
+                        {key === "width" ? "W" : key === "height" ? "H" : key}
+                        <Input
+                          className="h-8 px-2"
+                          type="number"
+                          value={selected[key]}
+                          placeholder={key}
+                          onChange={(event) =>
+                            updateElement(
+                              selected.id,
+                              clampedElementPatch(template, {
+                                x: key === "x" ? Number(event.target.value) : selected.x,
+                                y: key === "y" ? Number(event.target.value) : selected.y,
+                                width: key === "width" ? Number(event.target.value) : selected.width,
+                                height: key === "height" ? Number(event.target.value) : selected.height
+                              })
+                            )
+                          }
+                        />
+                      </label>
+                    ))}
+                  </div>
+
+                  <div className="grid grid-cols-5 gap-2">
+                    <Button variant="outline" size="sm" onClick={() => resizeSelectedBox(-3)} aria-label="Shrink box">
+                      <Minus className="h-4 w-4" />
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => resizeSelectedBox(3)} aria-label="Grow box">
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => changeSelectedFontSize(-1)} aria-label="Decrease text">
+                      <Type className="h-4 w-4" />
+                      <Minus className="h-3 w-3" />
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => changeSelectedFontSize(1)} aria-label="Increase text">
+                      <Type className="h-4 w-4" />
+                      <Plus className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      variant={numericStyle(selected, "fontWeight", 700) >= 700 ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => updateSelectedStyle({ fontWeight: numericStyle(selected, "fontWeight", 700) >= 700 ? 500 : 800 })}
+                      aria-label="Toggle bold"
+                    >
+                      <Bold className="h-4 w-4" />
+                    </Button>
+                  </div>
+
+                  <label className="block space-y-1 text-xs font-semibold">
+                    <span>Font size</span>
+                    <input
+                      className="w-full accent-[hsl(var(--primary))]"
+                      type="range"
+                      min="6"
+                      max="32"
+                      step="1"
+                      value={numericStyle(selected, "fontSize", 10)}
+                      onChange={(event) => updateSelectedStyle({ fontSize: Number(event.target.value) })}
+                    />
+                  </label>
+
+                  <div className="space-y-2">
+                    <Switch checked={boolStyle(selected, "highlight")} onCheckedChange={(highlight) => updateSelectedStyle({ highlight })} label="Highlight field" />
+                    <div className="grid grid-cols-[54px_1fr] items-center gap-2">
+                      <div className="text-[10px] font-semibold uppercase text-muted-foreground">Fill</div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {highlightSwatches.map((color) => (
+                          <button
+                            key={color}
+                            type="button"
+                            aria-label={`Highlight ${color}`}
+                            className="h-6 w-6 rounded border shadow-sm"
+                            style={{ backgroundColor: color }}
+                            onClick={() => updateSelectedStyle({ highlight: true, backgroundColor: color })}
+                          />
+                        ))}
+                      </div>
+                      <div className="text-[10px] font-semibold uppercase text-muted-foreground">Text</div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {textSwatches.map((color) => (
+                          <button
+                            key={color}
+                            type="button"
+                            aria-label={`Text ${color}`}
+                            className="h-6 w-6 rounded border shadow-sm"
+                            style={{ backgroundColor: color }}
+                            onClick={() => updateSelectedStyle({ color })}
+                          />
+                        ))}
+                      </div>
+                      <div className="text-[10px] font-semibold uppercase text-muted-foreground">Border</div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {borderSwatches.map((color) => (
+                          <button
+                            key={color}
+                            type="button"
+                            aria-label={`Border ${color}`}
+                            className="h-6 w-6 rounded border shadow-sm"
+                            style={{ backgroundColor: color }}
+                            onClick={() => updateSelectedStyle({ borderColor: color })}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-5 gap-2">
+                    <Button variant="outline" size="sm" onClick={() => updateElement(selected.id, { rotate: (selected.rotate || 0) + 15 })} aria-label="Rotate">
+                      <RotateCw className="h-4 w-4" />
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => updateElement(selected.id, { locked: !selected.locked })} aria-label="Lock">
+                      <Lock className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const duplicate = { ...selected, id: `${selected.id}-copy`, x: selected.x + 4, y: selected.y + 4 };
+                        setTemplate((current) => ({ ...current, elements: [...current.elements, duplicate] }));
+                        setSelectedId(duplicate.id);
+                      }}
+                      aria-label="Duplicate"
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        resizeSelectedBox(4);
+                        changeSelectedFontSize(1);
+                      }}
+                      aria-label="Maximize"
+                    >
+                      <Maximize2 className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => setTemplate((current) => ({ ...current, elements: current.elements.filter((item) => item.id !== selected.id) }))}
+                      aria-label="Delete"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-md border bg-muted/40 p-3 text-sm font-semibold text-muted-foreground">
+                  <Upload className="mb-2 h-4 w-4" />
+                  Select or import a field to edit it.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card className="self-start xl:sticky xl:top-4 xl:col-start-3 xl:row-start-1">
+          <CardHeader className="p-4 pb-2">
             <div>
               <CardTitle>Inspector</CardTitle>
-              <CardDescription>Field size, highlight, paper, and print behavior.</CardDescription>
             </div>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-3 p-4 pt-0">
             <label className="space-y-1 text-sm">
               <span className="font-semibold">Template name</span>
               <Input value={template.name} onChange={(event) => setTemplate({ ...template, name: event.target.value })} placeholder="Example: Small Template" />
@@ -650,10 +898,7 @@ export function TemplateBuilderPage() {
               <option value="letter">Letter Sheet</option>
               <option value="custom">Custom</option>
             </Select>
-            <Select value={template.renderer || "template"} onChange={(event) => setTemplate({ ...template, renderer: event.target.value as SlipTemplate["renderer"] })}>
-              <option value="industrial">Industrial bordered renderer</option>
-              <option value="template">Freeform template renderer</option>
-            </Select>
+            <Badge variant="muted" className="w-fit">Bordered template</Badge>
             <Switch checked={template.thermalMode} onCheckedChange={(thermalMode) => setTemplate({ ...template, thermalMode })} label="Thermal mode" />
             <label className="block space-y-1 text-sm">
               <span className="flex items-center gap-2 font-semibold">
@@ -662,187 +907,67 @@ export function TemplateBuilderPage() {
               <input className="w-full accent-[hsl(var(--primary))]" type="range" min="0.7" max="2.2" step="0.05" value={zoom} onChange={(event) => setZoom(Number(event.target.value))} />
             </label>
 
-            {selected ? (
-              <div className="space-y-4 border-t pt-4">
-                <div className="flex items-center justify-between">
-                  <div className="min-w-0 text-sm font-bold">{selected.label || selected.field}</div>
-                  <Badge variant="default">{selected.type}</Badge>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  {(["x", "y", "width", "height"] as const).map((key) => (
-                    <label key={key} className="space-y-1 text-xs font-semibold uppercase text-muted-foreground">
-                      {key}
-                      <Input
-                        type="number"
-                        value={selected[key]}
-                        placeholder={key}
-                        onChange={(event) =>
-                          updateElement(
-                            selected.id,
-                            clampedElementPatch(template, {
-                              x: key === "x" ? Number(event.target.value) : selected.x,
-                              y: key === "y" ? Number(event.target.value) : selected.y,
-                              width: key === "width" ? Number(event.target.value) : selected.width,
-                              height: key === "height" ? Number(event.target.value) : selected.height
-                            })
-                          )
-                        }
-                      />
-                    </label>
+            <div className="space-y-3 border-t pt-3">
+              <div className="text-sm font-bold">Print page fit</div>
+              <div className="grid grid-cols-2 gap-2">
+                <label className="space-y-1 text-xs font-semibold uppercase text-muted-foreground">
+                  Page
+                  <Select value={printPage} onChange={(event) => setPrintPage(event.target.value as keyof typeof printPages)}>
+                    {Object.entries(printPages).map(([key, page]) => (
+                      <option key={key} value={key}>
+                        {page.label}
+                      </option>
+                    ))}
+                  </Select>
+                </label>
+                <label className="space-y-1 text-xs font-semibold uppercase text-muted-foreground">
+                  Per row
+                  <Select value={String(slipsPerRow)} onChange={(event) => setSlipsPerRow(Number(event.target.value))}>
+                    {[1, 2, 3, 4, 5].map((count) => (
+                      <option key={count} value={count}>
+                        {count} slips
+                      </option>
+                    ))}
+                  </Select>
+                </label>
+              </div>
+              <div className="overflow-hidden rounded-md border bg-white p-2">
+                <div className="flex gap-1" style={{ aspectRatio: `${selectedPrintPage.width} / ${Math.min(selectedPrintPage.height, 90)}` }}>
+                  {Array.from({ length: slipsPerRow }).map((_, index) => (
+                    <div key={index} className="grid flex-1 place-items-center border border-dashed border-primary/70 bg-primary/10 text-[10px] font-black text-primary">
+                      {Math.round(fittedSlipWidth)}mm
+                    </div>
                   ))}
                 </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <Button variant="outline" onClick={() => resizeSelectedBox(-3)}>
-                    <Minus className="h-4 w-4" /> Box
-                  </Button>
-                  <Button variant="outline" onClick={() => resizeSelectedBox(3)}>
-                    <Plus className="h-4 w-4" /> Box
-                  </Button>
-                  <Button variant="outline" onClick={() => changeSelectedFontSize(-1)}>
-                    <Minus className="h-4 w-4" /> Text
-                  </Button>
-                  <Button variant="outline" onClick={() => changeSelectedFontSize(1)}>
-                    <Plus className="h-4 w-4" /> Text
-                  </Button>
-                </div>
-
-                <label className="block space-y-1 text-sm">
-                  <span className="flex items-center gap-2 font-semibold">
-                    <Type className="h-4 w-4" /> Font size
-                  </span>
-                  <input
-                    className="w-full accent-[hsl(var(--primary))]"
-                    type="range"
-                    min="6"
-                    max="32"
-                    step="1"
-                    value={numericStyle(selected, "fontSize", 10)}
-                    onChange={(event) => updateSelectedStyle({ fontSize: Number(event.target.value) })}
-                  />
-                </label>
-
-                <div className="space-y-2">
-                  <Switch checked={boolStyle(selected, "highlight")} onCheckedChange={(highlight) => updateSelectedStyle({ highlight })} label="Highlight field" />
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2 text-xs font-semibold uppercase text-muted-foreground">
-                      <Palette className="h-3.5 w-3.5" /> Highlight
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {highlightSwatches.map((color) => (
-                        <button
-                          key={color}
-                          type="button"
-                          aria-label={`Highlight ${color}`}
-                          className="h-7 w-7 rounded border shadow-sm"
-                          style={{ backgroundColor: color }}
-                          onClick={() => updateSelectedStyle({ highlight: true, backgroundColor: color })}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <div className="text-xs font-semibold uppercase text-muted-foreground">Text</div>
-                    <div className="flex flex-wrap gap-2">
-                      {textSwatches.map((color) => (
-                        <button
-                          key={color}
-                          type="button"
-                          aria-label={`Text ${color}`}
-                          className="h-7 w-7 rounded border shadow-sm"
-                          style={{ backgroundColor: color }}
-                          onClick={() => updateSelectedStyle({ color })}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <div className="text-xs font-semibold uppercase text-muted-foreground">Border</div>
-                    <div className="flex flex-wrap gap-2">
-                      {borderSwatches.map((color) => (
-                        <button
-                          key={color}
-                          type="button"
-                          aria-label={`Border ${color}`}
-                          className="h-7 w-7 rounded border shadow-sm"
-                          style={{ backgroundColor: color }}
-                          onClick={() => updateSelectedStyle({ borderColor: color })}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex gap-2">
-                  <Button variant="outline" size="icon" onClick={() => updateElement(selected.id, { rotate: (selected.rotate || 0) + 15 })}>
-                    <RotateCw className="h-4 w-4" />
-                  </Button>
-                  <Button variant="outline" size="icon" onClick={() => updateElement(selected.id, { locked: !selected.locked })}>
-                    <Lock className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => {
-                      const duplicate = { ...selected, id: `${selected.id}-copy`, x: selected.x + 4, y: selected.y + 4 };
-                      setTemplate((current) => ({ ...current, elements: [...current.elements, duplicate] }));
-                    }}
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => {
-                      resizeSelectedBox(4);
-                      changeSelectedFontSize(1);
-                    }}
-                  >
-                    <Maximize2 className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    size="icon"
-                    onClick={() => setTemplate((current) => ({ ...current, elements: current.elements.filter((item) => item.id !== selected.id) }))}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
               </div>
-            ) : (
-              <div className="rounded-md border bg-muted/40 p-3 text-sm font-semibold text-muted-foreground">
-                <Upload className="mb-2 h-4 w-4" />
-                Select or import a field to edit its size and highlight.
-              </div>
-            )}
+              <Button type="button" variant="outline" size="sm" className="w-full" onClick={applyPrintPageFit}>
+                Apply {slipsPerRow} per row ({fittedSlipWidth.toFixed(1)}mm wide)
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
-        <Card className="min-w-0">
-          <CardHeader>
-            <div>
-              <CardTitle>{template.name}</CardTitle>
-              <CardDescription>
-                {template.width} x {template.height} {template.units} - {template.thermalMode ? "Thermal" : "Sheet"} - Snap {template.snapGrid}
-                {template.units}
-              </CardDescription>
-            </div>
-            <div className="flex items-center gap-2">
-              <Badge variant="muted">
-                <Ruler className="mr-1 h-3 w-3" /> Rulers
-              </Badge>
-              <Badge variant="muted">
-                <Grid3X3 className="mr-1 h-3 w-3" /> Grid
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-auto rounded-lg border bg-muted/30 p-4 lg:p-6">
-              {mode === "preview" ? (
-                <div className="flex min-w-max justify-center">
-                  <SlipRenderer slip={{ ...sampleSlips[0], template }} scale={1.8} />
-                </div>
-              ) : (
+        <div className="grid min-w-0 gap-3 xl:col-start-2 xl:row-start-1">
+          <Card className="min-w-0 self-start">
+            <CardHeader>
+              <div>
+                <CardTitle>{template.name}</CardTitle>
+                <CardDescription>
+                  {template.width} x {template.height} {template.units} - {template.thermalMode ? "Thermal" : "Sheet"} - Snap {template.snapGrid}
+                  {template.units}
+                </CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge variant="muted">
+                  <Ruler className="mr-1 h-3 w-3" /> Rulers
+                </Badge>
+                <Badge variant="muted">
+                  <Grid3X3 className="mr-1 h-3 w-3" /> Grid
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-auto rounded-lg border bg-muted/30 p-4 lg:p-6">
                 <DndContext modifiers={[restrictToParentElement]} onDragEnd={onDragEnd}>
                   <div
                     className="relative mx-auto overflow-hidden bg-white shadow-panel"
@@ -874,10 +999,26 @@ export function TemplateBuilderPage() {
                     ))}
                   </div>
                 </DndContext>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="min-w-0 self-start">
+            <CardHeader>
+              <div>
+                <CardTitle>Live print preview</CardTitle>
+                <CardDescription>Placeholder data on the final paper size.</CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-auto rounded-lg border bg-muted/30 p-4">
+                <div className="flex min-w-max justify-center">
+                  <SlipRenderer slip={livePreviewSlip} scale={1.25} />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </>
   );

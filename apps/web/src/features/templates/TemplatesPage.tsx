@@ -7,10 +7,33 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Td, Th, Table } from "@/components/ui/table";
 import { sampleTemplates } from "@/lib/sampleData";
 import { useTemplates } from "@/lib/useWarehouseData";
+import { readLocalTemplates } from "@/lib/localTemplates";
+import { useEffect, useMemo, useState } from "react";
+import { useAuthStore } from "@/stores/authStore";
+import { limitsFor } from "@/lib/planLimits";
+import { UpgradeBadge } from "@/components/billing/FeatureGate";
 
 export function TemplatesPage() {
   const templates = useTemplates();
-  const templateOptions = templates.data?.length ? templates.data : sampleTemplates;
+  const plan = useAuthStore((state) => state.company?.plan);
+  const [localTemplates, setLocalTemplates] = useState(() => readLocalTemplates());
+  const templateOptions = useMemo(() => {
+    const baseTemplates = templates.data?.length ? templates.data : sampleTemplates;
+    return [...localTemplates, ...baseTemplates.filter((template) => !localTemplates.some((local) => local._id === template._id))];
+  }, [localTemplates, templates.data]);
+  const customTemplateCount = templateOptions.filter((template) => !["Small Template", "Medium Template"].includes(template.name)).length;
+  const customTemplateLimit = limitsFor(plan).customTemplates;
+  const customTemplateLocked = customTemplateLimit !== Infinity && customTemplateCount >= customTemplateLimit;
+
+  useEffect(() => {
+    const refresh = () => setLocalTemplates(readLocalTemplates());
+    window.addEventListener("focus", refresh);
+    window.addEventListener("packslip:templates-updated", refresh);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      window.removeEventListener("packslip:templates-updated", refresh);
+    };
+  }, []);
 
   return (
     <>
@@ -19,10 +42,16 @@ export function TemplatesPage() {
         title="Slip Design"
         description="Built-in small and medium industrial slip layouts for fast printing."
         actions={
-          <Button asChild>
-            <Link to="/templates/builder">
-              <Plus className="h-4 w-4" /> New Design
-            </Link>
+          <Button asChild={!customTemplateLocked} disabled={customTemplateLocked}>
+            {customTemplateLocked ? (
+              <span>
+                <Plus className="h-4 w-4" /> New Design <UpgradeBadge label="Pro" />
+              </span>
+            ) : (
+              <Link to="/templates/builder">
+                <Plus className="h-4 w-4" /> New Design
+              </Link>
+            )}
           </Button>
         }
       />

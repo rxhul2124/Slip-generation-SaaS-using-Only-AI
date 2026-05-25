@@ -8,41 +8,53 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/input";
 import { Table, Td, Th } from "@/components/ui/table";
-import { sampleCustomers, sampleProducts, sampleSlips, sampleTemplate } from "@/lib/sampleData";
+import { sampleTemplate } from "@/lib/sampleData";
 import type { GeneratedSlip } from "@/lib/types";
+import { useCustomers, useProducts } from "@/lib/useWarehouseData";
 import { useNotificationStore } from "@/stores/notificationStore";
+import { FeatureGate, UpgradeBadge } from "@/components/billing/FeatureGate";
 
 export function BulkGenerationPage() {
   const [csv, setCsv] = useState("");
   const printRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const notify = useNotificationStore((state) => state.push);
+  const products = useProducts();
+  const customers = useCustomers();
   const rows = useMemo(() => csv.split("\n").slice(1).filter(Boolean), [csv]);
   const slips = useMemo<GeneratedSlip[]>(
     () =>
-      rows.map((row, index) => {
+      rows.flatMap((row, index) => {
         const [productName, qty, customerName, orderReference] = row.split(",");
+        const product = products.data?.find((item) => item.name === productName);
+        const customer = customers.data?.find((item) => item.name === customerName);
+        if (!product || !customer) return [];
         return {
-          ...sampleSlips[0],
           _id: `bulk-${index}`,
           serialNumber: `SLIP-2026-${String(index + 12).padStart(6, "0")}`,
-          product: sampleProducts.find((product) => product.name === productName) || sampleProducts[0],
-          customer: sampleCustomers.find((customer) => customer.name === customerName) || sampleCustomers[0],
+          product,
+          customer,
           template: sampleTemplate,
-          slipType: index === 2 ? "qc" : "packing",
+          slipType: "packing",
           quantity: Number(qty || 1),
-          quantityUnit: (sampleProducts.find((product) => product.name === productName) || sampleProducts[0]).quantityUnit,
-          displayWeight: (sampleProducts.find((product) => product.name === productName) || sampleProducts[0]).weight,
+          quantityUnit: product.quantityUnit,
+          displayWeight: product.weight,
           orderReference,
-          destination: sampleCustomers.find((customer) => customer.name === customerName)?.shippingAddress?.city,
+          destination: customer.shippingAddress?.city,
+          barcodeValue: product.barcode,
+          qrPayload: { product: product.name, customer: customer.name, orderReference },
+          status: "draft",
+          printedCount: 0,
+          exportedCount: 0,
           createdAt: new Date().toISOString()
         };
       }),
-    [rows]
+    [customers.data, products.data, rows]
   );
   const print = useReactToPrint({ content: () => printRef.current, documentTitle: "packslip-bulk" });
 
   return (
+    <FeatureGate feature="bulk" title="Bulk generation" body="Bulk CSV generation is available on Pro and Enterprise plans." minimum="Pro">
     <>
       <PageHeader
         eyebrow="Bulk"
@@ -50,6 +62,7 @@ export function BulkGenerationPage() {
         description="Upload CSV rows, validate hundreds of packing slips, paginate intelligently, and send to PDF or print queue."
         actions={
           <>
+            <UpgradeBadge label="Pro" />
             <Badge variant="success">{slips.length} ready</Badge>
             <Button variant="outline" onClick={() => fileRef.current?.click()}>
               <Upload className="h-4 w-4" /> Upload CSV
@@ -132,5 +145,6 @@ export function BulkGenerationPage() {
         </Card>
       </div>
     </>
+    </FeatureGate>
   );
 }
