@@ -3,6 +3,21 @@ import type { SlipTemplate } from "./types";
 const savedTemplatesKey = "packslip.savedTemplates";
 const draftTemplateKey = "packslip.templateDraft";
 
+function currentScopeId() {
+  try {
+    const raw = localStorage.getItem("packslip.auth");
+    const parsed = raw ? JSON.parse(raw) : null;
+    const state = parsed?.state || parsed;
+    return state?.company?.id || state?.company?._id || state?.user?.id || state?.user?._id || "anonymous";
+  } catch {
+    return "anonymous";
+  }
+}
+
+function scopedKey(key: string) {
+  return `${key}:${currentScopeId()}`;
+}
+
 function isTemplate(value: unknown): value is SlipTemplate {
   const template = value as Partial<SlipTemplate> | null;
   return Boolean(template?._id && template?.name && Array.isArray(template?.elements));
@@ -12,7 +27,7 @@ export function readLocalTemplates() {
   const templates: SlipTemplate[] = [];
 
   try {
-    const raw = localStorage.getItem(savedTemplatesKey);
+    const raw = localStorage.getItem(scopedKey(savedTemplatesKey));
     const parsed = raw ? JSON.parse(raw) : [];
     if (Array.isArray(parsed)) {
       templates.push(...parsed.filter(isTemplate));
@@ -22,7 +37,7 @@ export function readLocalTemplates() {
   }
 
   try {
-    const rawDraft = localStorage.getItem(draftTemplateKey);
+    const rawDraft = localStorage.getItem(scopedKey(draftTemplateKey));
     const draft = rawDraft ? JSON.parse(rawDraft) : null;
     if (isTemplate(draft) && !templates.some((template) => template._id === draft._id)) {
       templates.unshift(draft);
@@ -42,8 +57,8 @@ export function getLocalTemplate(id?: string | null) {
 export function saveLocalTemplate(template: SlipTemplate) {
   const saved = readLocalTemplates();
   const next = [template, ...saved.filter((item) => item._id !== template._id)];
-  localStorage.setItem(savedTemplatesKey, JSON.stringify(next));
-  localStorage.setItem(draftTemplateKey, JSON.stringify(template));
+  localStorage.setItem(scopedKey(savedTemplatesKey), JSON.stringify(next));
+  localStorage.setItem(scopedKey(draftTemplateKey), JSON.stringify(template));
   window.dispatchEvent(new Event("packslip:templates-updated"));
   return next;
 }
