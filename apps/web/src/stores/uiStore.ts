@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 interface UiState {
   darkMode: boolean;
@@ -10,12 +11,20 @@ interface UiState {
   setCommandOpen: (open: boolean) => void;
 }
 
-export const useUiStore = create<UiState>((set) => ({
-  darkMode: false,
-  sidebarCollapsed: false,
-  commandOpen: false,
-  toggleDarkMode: () => set((state) => ({ darkMode: !state.darkMode })),
-  toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
-  setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
-  setCommandOpen: (open) => set({ commandOpen: open })
-}));
+export const useUiStore = create<UiState>()(
+  persist(
+    (set) => ({
+      darkMode: false,
+      sidebarCollapsed: false,
+      commandOpen: false,
+      toggleDarkMode: () => set((state) => ({ darkMode: !state.darkMode })),
+      toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+      setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
+      setCommandOpen: (open) => set({ commandOpen: open })
+    }),
+    {
+      name: "packslip-ui-preferences",
+      partialize: (state) => ({ darkMode: state.darkMode })
+    }
+  )
+);

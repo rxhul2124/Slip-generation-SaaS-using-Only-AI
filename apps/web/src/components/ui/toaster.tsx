@@ -4,10 +4,10 @@ import { cn } from "@/lib/utils";
 import { useNotificationStore, type NotificationTone } from "@/stores/notificationStore";
 
 const toneStyles: Record<NotificationTone, string> = {
-  success: "border-emerald-500/30 bg-emerald-50 text-emerald-950 dark:bg-emerald-950 dark:text-emerald-50",
-  warning: "border-amber-500/30 bg-amber-50 text-amber-950 dark:bg-amber-950 dark:text-amber-50",
-  error: "border-red-500/30 bg-red-50 text-red-950 dark:bg-red-950 dark:text-red-50",
-  info: "border-primary/30 bg-card text-card-foreground"
+  success: "border-emerald-500/25 bg-white text-slate-950 dark:border-emerald-400/30 dark:bg-[#14171f] dark:text-slate-50",
+  warning: "border-amber-500/25 bg-white text-slate-950 dark:border-amber-400/30 dark:bg-[#14171f] dark:text-slate-50",
+  error: "border-red-500/25 bg-white text-slate-950 dark:border-red-400/30 dark:bg-[#14171f] dark:text-slate-50",
+  info: "border-slate-900/10 bg-white text-slate-950 dark:border-white/10 dark:bg-[#14171f] dark:text-slate-50"
 };
 
 const icons = {
@@ -25,7 +25,7 @@ export function Toaster() {
       {notifications.map((notification) => {
         const Icon = icons[notification.tone] || Zap;
         return (
-          <div key={notification.id} className={cn("rounded-lg border p-4 shadow-panel backdrop-blur-xl", toneStyles[notification.tone])}>
+          <div key={notification.id} className={cn("rounded-lg border p-4 shadow-[0_18px_48px_rgba(15,23,42,0.14)] backdrop-blur-xl", toneStyles[notification.tone])}>
             <div className="flex gap-3">
               <Icon className="mt-0.5 h-5 w-5 shrink-0" />
               <div className="min-w-0 flex-1">

@@ -1,7 +1,8 @@
-import { lazy, Suspense, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, type ReactNode } from "react";
 import { Navigate, RouterProvider, createBrowserRouter } from "react-router-dom";
 import { AppShell } from "@/components/layout/AppShell";
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
+import { useUiStore } from "@/stores/uiStore";
 
 const ActivityPage = lazy(() => import("@/features/activity/ActivityPage").then((module) => ({ default: module.ActivityPage })));
 const AnalyticsPage = lazy(() => import("@/features/analytics/AnalyticsPage").then((module) => ({ default: module.AnalyticsPage })));
@@ -14,6 +15,7 @@ const ForgotPasswordPage = lazy(() => import("@/features/auth/ForgotPasswordPage
 const GenerateSlipPage = lazy(() => import("@/features/slips/GenerateSlipPage").then((module) => ({ default: module.GenerateSlipPage })));
 const LandingPage = lazy(() => import("@/features/landing/LandingPage").then((module) => ({ default: module.LandingPage })));
 const LoginPage = lazy(() => import("@/features/auth/LoginPage").then((module) => ({ default: module.LoginPage })));
+const MarketingPage = lazy(() => import("@/features/landing/MarketingPage").then((module) => ({ default: module.MarketingPage })));
 const OnboardingPage = lazy(() => import("@/features/onboarding/OnboardingPage").then((module) => ({ default: module.OnboardingPage })));
 const OverviewPage = lazy(() => import("@/features/dashboard/OverviewPage").then((module) => ({ default: module.OverviewPage })));
 const PresetsPage = lazy(() => import("@/features/presets/PresetsPage").then((module) => ({ default: module.PresetsPage })));
@@ -45,6 +47,18 @@ const router = createBrowserRouter([
   { path: "/login", element: screen(<LoginPage />) },
   { path: "/register", element: screen(<RegisterPage />) },
   { path: "/forgot-password", element: screen(<ForgotPasswordPage />) },
+  { path: "/product", element: screen(<MarketingPage page="product" />) },
+  { path: "/features", element: screen(<MarketingPage page="features" />) },
+  { path: "/templates-info", element: screen(<MarketingPage page="templates" />) },
+  { path: "/pricing", element: screen(<MarketingPage page="pricing" />) },
+  { path: "/resources", element: screen(<MarketingPage page="resources" />) },
+  { path: "/documentation", element: screen(<MarketingPage page="documentation" />) },
+  { path: "/api-reference", element: screen(<MarketingPage page="apiReference" />) },
+  { path: "/support", element: screen(<MarketingPage page="support" />) },
+  { path: "/company", element: screen(<MarketingPage page="company" />) },
+  { path: "/about", element: screen(<MarketingPage page="about" />) },
+  { path: "/careers", element: screen(<MarketingPage page="careers" />) },
+  { path: "/privacy", element: screen(<MarketingPage page="privacy" />) },
   {
     element: <ProtectedRoute />,
     children: [
@@ -77,5 +91,11 @@ const router = createBrowserRouter([
 ]);
 
 export function App() {
+  const darkMode = useUiStore((state) => state.darkMode);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", darkMode);
+  }, [darkMode]);
+
   return <RouterProvider router={router} />;
 }

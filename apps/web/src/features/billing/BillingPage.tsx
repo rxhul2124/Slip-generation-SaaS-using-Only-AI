@@ -12,9 +12,9 @@ import { useAuthStore } from "@/stores/authStore";
 import { useNotificationStore } from "@/stores/notificationStore";
 
 const plans = [
-  { id: "free", name: "Free", price: 0, label: "limited slips/month", features: ["100 slips", "Browser printing", "Basic templates"] },
-  { id: "pro", name: "Pro", price: 699, label: "unlimited slips", features: ["Analytics", "Backups", "Thermal printing", "Bulk PDFs"] },
-  { id: "enterprise", name: "Enterprise", price: 0, label: "custom contract", features: ["Teams", "API access", "Advanced audit", "Priority support"] }
+  { id: "free", name: "Free", price: 0, label: "50 slips/month", features: ["1 user", "2 companies", "10 products", "2 custom templates", "Browser printing"] },
+  { id: "pro", name: "Pro", price: 699, label: "for growing teams", features: ["5 users", "3 active devices", "Bulk CSV", "Presets", "Reports", "Backups", "Logo import"] },
+  { id: "enterprise", name: "Enterprise", price: 0, label: "custom contract", features: ["Users by contract", "Audit logs", "SSO-ready controls", "Dedicated restore", "Priority support"] }
 ] as const;
 
 type PlanId = (typeof plans)[number]["id"];
@@ -141,7 +141,7 @@ export function BillingPage() {
                   {isActive ? <Check className="h-5 w-5 text-emerald-600" /> : <Lock className="h-5 w-5 text-primary" />}
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="text-3xl font-black">{plan.price ? formatCurrency(plan.price) : plan.name === "Enterprise" ? "Custom" : "Free"}</div>
+                  <div className="text-3xl font-black">{plan.price ? `${formatCurrency(plan.price)}/mo` : plan.name === "Enterprise" ? "Custom" : "Free"}</div>
                   <div className="space-y-2">
                     {plan.features.map((feature) => (
                       <div key={feature} className="flex items-center gap-2 text-sm">
