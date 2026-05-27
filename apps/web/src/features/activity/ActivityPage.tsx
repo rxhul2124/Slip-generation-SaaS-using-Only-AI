@@ -1,4 +1,8 @@
 import { Activity, FileDown, LogIn, Printer, Settings } from "lucide-react";
+import { Pagination } from "@/components/ui/Pagination";
+import { TableSkeleton } from "@/components/ui/TableSkeleton";
+import { usePagination } from "@/lib/usePagination";
+
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,21 +20,21 @@ export function ActivityPage() {
   const slips = useSlips();
   const jobs = usePrintJobs();
   const events = [
-    ...(logs.data || []).map((log) => ({
+    ...(logs.data?.data || []).map((log: any) => ({
       id: log._id,
       title: log.action,
       body: `${log.user?.name || "System"} · ${log.resource}${log.resourceId ? ` · ${log.resourceId}` : ""}`,
       at: log.createdAt,
       kind: log.action
     })),
-    ...(jobs.data || []).map((job) => ({
+    ...(jobs.data?.data || []).map((job: any) => ({
       id: job._id,
       title: `print.${job.status}`,
       body: `${job.printer || "Printer"} · ${job.slips.length} slip(s)`,
       at: job.createdAt,
       kind: "slip.export"
     })),
-    ...(slips.data || []).map((slip) => ({
+    ...(slips.data?.data || []).map((slip) => ({
       id: slip._id,
       title: "slip.generated",
       body: `${slip.serialNumber} · ${slip.product.name} · ${slip.customer.name}`,
@@ -73,7 +77,8 @@ export function ActivityPage() {
               );
             })}
           </div>
-        </CardContent>
+        
+          </CardContent>
       </Card>
     </>
   );

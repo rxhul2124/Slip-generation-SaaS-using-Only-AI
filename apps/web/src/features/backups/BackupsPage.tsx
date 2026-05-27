@@ -1,4 +1,8 @@
 import { CloudUpload, Download, RotateCcw } from "lucide-react";
+import { Pagination } from "@/components/ui/Pagination";
+import { TableSkeleton } from "@/components/ui/TableSkeleton";
+import { usePagination } from "@/lib/usePagination";
+
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +16,11 @@ import { useNotificationStore } from "@/stores/notificationStore";
 import { FeatureGate, UpgradeBadge } from "@/components/billing/FeatureGate";
 
 export function BackupsPage() {
-  const backups = useBackups();
+  const { page, limit, setPage, setLimit } = usePagination();
+  const queryData = useBackups({ page, limit });
+  const backups = queryData.data?.data || [];
+  const meta = queryData.data?.meta;
+  const isLoading = queryData.isLoading;
   const queryClient = useQueryClient();
   const notify = useNotificationStore((state) => state.push);
   const createBackup = useMutation({
@@ -76,7 +84,7 @@ export function BackupsPage() {
               </tr>
             </thead>
             <tbody>
-              {backups.data?.map((backup) => (
+              {backups.map((backup) => (
                 <tr key={backup._id}>
                   <Td className="font-semibold">{backup.type}</Td>
                   <Td>
@@ -98,7 +106,18 @@ export function BackupsPage() {
               ))}
             </tbody>
           </Table>
-        </CardContent>
+        
+            {meta && (
+              <Pagination
+                page={meta.page}
+                pages={meta.pages}
+                limit={meta.limit}
+                total={meta.total}
+                onPageChange={setPage}
+                onLimitChange={setLimit}
+              />
+            )}
+          </CardContent>
       </Card>
     </>
     </FeatureGate>

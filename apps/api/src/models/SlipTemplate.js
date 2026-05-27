@@ -49,6 +49,12 @@ const templateSchema = new mongoose.Schema(
     bleed: { type: Number, default: 0 },
     cropMarks: { type: Boolean, default: false },
     snapGrid: { type: Number, default: 2 },
+    watermark: {
+      enabled: { type: Boolean, default: false },
+      opacity: { type: Number, default: 0.12 },
+      size: { type: Number, default: 55 },
+      imageDataUrl: String
+    },
     elements: [elementSchema],
     favorite: { type: Boolean, default: false },
     archivedAt: Date,
@@ -59,5 +65,6 @@ const templateSchema = new mongoose.Schema(
 );
 
 templateSchema.index({ company: 1, name: 1 }, { unique: true });
+templateSchema.index({ company: 1, name: "text", description: "text" });
 
 export const SlipTemplate = mongoose.model("SlipTemplate", templateSchema);

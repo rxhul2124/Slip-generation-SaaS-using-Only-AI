@@ -1,3 +1,12 @@
+/**
+ * API Features Utility
+ * Provides standardized query parsing for paginated list endpoints.
+ * 
+ * Contract for list endpoints:
+ * - Request Query: ?page=1&limit=25&sort=-createdAt&search=foo
+ * - Response Shape: { data: T[], meta: { page, limit, total, pages } }
+ */
+
 const operators = new Set(["gte", "gt", "lte", "lt", "ne", "in"]);
 
 export function buildQuery(queryString, allowedFilters = []) {
@@ -22,11 +31,31 @@ export function buildQuery(queryString, allowedFilters = []) {
 }
 
 export function pagination(queryString) {
-  const page = Math.max(Number(queryString.page) || 1, 1);
-  const limit = Math.min(Math.max(Number(queryString.limit) || 25, 1), 100);
+  let page = Number(queryString?.page);
+  let limit = Number(queryString?.limit);
+
+  if (isNaN(page) || page < 1) page = 1;
+  if (isNaN(limit) || limit < 1) limit = 25;
+  if (limit > 100) limit = 100;
+
   return { page, limit, skip: (page - 1) * limit };
 }
 
 export function sortOption(sort) {
-  return sort ? String(sort).split(",").join(" ") : "-createdAt";
+  const defaultSort = "-createdAt -_id";
+  if (!sort) return defaultSort;
+  
+  // Handle comma-separated list of sorts
+  const parsed = String(sort).split(",").map(part => {
+    part = part.trim();
+    // Handle ?sort=field:desc or ?sort=field:asc
+    if (part.includes(":")) {
+      const [field, dir] = part.split(":");
+      return dir.toLowerCase() === "desc" ? `-${field}` : field;
+    }
+    // Handle ?sort=-field or ?sort=field
+    return part;
+  }).filter(p => !p.includes("_id"));
+
+  return [...parsed, "-_id"].join(" ");
 }

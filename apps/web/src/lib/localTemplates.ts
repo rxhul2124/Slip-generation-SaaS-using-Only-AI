@@ -62,3 +62,21 @@ export function saveLocalTemplate(template: SlipTemplate) {
   window.dispatchEvent(new Event("packslip:templates-updated"));
   return next;
 }
+
+export function deleteLocalTemplate(id: string) {
+  const saved = readLocalTemplates();
+  const next = saved.filter((item) => item._id !== id);
+  localStorage.setItem(scopedKey(savedTemplatesKey), JSON.stringify(next));
+  
+  // Clear draft if it's the one being deleted
+  try {
+    const rawDraft = localStorage.getItem(scopedKey(draftTemplateKey));
+    const draft = rawDraft ? JSON.parse(rawDraft) : null;
+    if (draft?._id === id) {
+      localStorage.removeItem(scopedKey(draftTemplateKey));
+    }
+  } catch {}
+  
+  window.dispatchEvent(new Event("packslip:templates-updated"));
+  return next;
+}

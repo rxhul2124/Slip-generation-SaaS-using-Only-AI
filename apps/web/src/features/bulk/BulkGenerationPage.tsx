@@ -26,8 +26,8 @@ export function BulkGenerationPage() {
     () =>
       rows.flatMap((row, index) => {
         const [productName, qty, customerName, orderReference] = row.split(",");
-        const product = products.data?.find((item) => item.name === productName);
-        const customer = customers.data?.find((item) => item.name === customerName);
+        const product = products.data?.data?.find((item) => item.name === productName);
+        const customer = customers.data?.data?.find((item) => item.name === customerName);
         if (!product || !customer) return [];
         return {
           _id: `bulk-${index}`,

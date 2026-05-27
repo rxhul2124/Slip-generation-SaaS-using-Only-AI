@@ -12,11 +12,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Table, Td, Th } from "@/components/ui/table";
+import { Table, Td, Th, EmptyState } from "@/components/ui/table";
 import { resources } from "@/lib/api";
 import type { Product } from "@/lib/types";
 import { useProducts } from "@/lib/useWarehouseData";
 import { useNotificationStore } from "@/stores/notificationStore";
+
+import { Pagination } from "@/components/ui/Pagination";
+import { TableSkeleton } from "@/components/ui/TableSkeleton";
+import { usePagination } from "@/lib/usePagination";
+import { useDebounce } from "@/lib/useDebounce";
+import { useState } from "react";
 
 const schema = z.object({
   name: z.string().min(2),
@@ -31,7 +37,14 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 export function ProductsPage() {
-  const products = useProducts();
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
+  const { page, limit, setPage, setLimit } = usePagination();
+  
+  const productsQuery = useProducts({ page, limit, search: debouncedSearch });
+  const products = productsQuery.data?.data || [];
+  const meta = productsQuery.data?.meta;
+
   const queryClient = useQueryClient();
   const notify = useNotificationStore((state) => state.push);
   const nameRef = useRef<HTMLInputElement | null>(null);
@@ -67,7 +80,10 @@ export function ProductsPage() {
         fragile: values.fragile,
         hazardous: values.hazardous
       };
-      queryClient.setQueryData<Product[]>(["products"], (current) => [localProduct, ...(current || [])]);
+      queryClient.setQueryData<{data: Product[], meta: any}>(["products", { page, limit, search: debouncedSearch }], (current) => ({
+        data: [localProduct, ...(current?.data || [])],
+        meta: current?.meta || { page: 1, limit: 25, total: 1, pages: 1 }
+      }));
       form.reset();
       notify({ tone: "warning", title: "Saved locally", body: `API unavailable, so ${values.sku} was added to this browser session.` });
       void error;
@@ -103,7 +119,15 @@ export function ProductsPage() {
             </div>
             <div className="relative w-full max-w-sm">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input className="pl-9" placeholder="Search SKU, barcode, tag" />
+              <Input 
+                className="pl-9" 
+                placeholder="Search SKU, barcode, tag" 
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
+              />
             </div>
           </CardHeader>
           <CardContent>
@@ -119,30 +143,54 @@ export function ProductsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {products.data?.map((product) => (
-                    <tr key={product._id}>
-                      <Td>
-                        <div className="flex items-center gap-2 font-semibold">
-                          {product.favorite ? <Star className="h-4 w-4 fill-accent text-accent" /> : null}
-                          {product.name}
-                        </div>
-                        <div className="text-xs text-muted-foreground">{product.category}</div>
+                  {productsQuery.isLoading ? (
+                    <tr>
+                      <Td colSpan={5} className="p-0 border-0">
+                        <TableSkeleton columns={5} />
                       </Td>
-                      <Td className="font-mono">{product.sku}</Td>
-                      <Td>{product.packagingType}</Td>
-                      <Td>
-                        <div className="flex gap-1">
-                          {product.fragile ? <Badge variant="warning">Fragile</Badge> : null}
-                          {product.hazardous ? <Badge variant="danger">Hazard</Badge> : null}
-                          {product.archivedAt ? <Badge variant="muted">Archived</Badge> : null}
-                        </div>
-                      </Td>
-                      <Td>{product.quantityDefault}</Td>
                     </tr>
-                  ))}
+                  ) : products.length === 0 ? (
+                    <tr>
+                      <Td colSpan={5}>
+                        <EmptyState title="No products found" body="Try adjusting your search or add a new product." />
+                      </Td>
+                    </tr>
+                  ) : (
+                    products.map((product) => (
+                      <tr key={product._id}>
+                        <Td>
+                          <div className="flex items-center gap-2 font-semibold">
+                            {product.favorite ? <Star className="h-4 w-4 fill-accent text-accent" /> : null}
+                            {product.name}
+                          </div>
+                          <div className="text-xs text-muted-foreground">{product.category}</div>
+                        </Td>
+                        <Td className="font-mono">{product.sku}</Td>
+                        <Td>{product.packagingType}</Td>
+                        <Td>
+                          <div className="flex gap-1">
+                            {product.fragile ? <Badge variant="warning">Fragile</Badge> : null}
+                            {product.hazardous ? <Badge variant="danger">Hazard</Badge> : null}
+                            {product.archivedAt ? <Badge variant="muted">Archived</Badge> : null}
+                          </div>
+                        </Td>
+                        <Td>{product.quantityDefault}</Td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </Table>
             </div>
+            {meta && (
+              <Pagination
+                page={meta.page}
+                pages={meta.pages}
+                limit={meta.limit}
+                total={meta.total}
+                onPageChange={setPage}
+                onLimitChange={setLimit}
+              />
+            )}
           </CardContent>
         </Card>
 

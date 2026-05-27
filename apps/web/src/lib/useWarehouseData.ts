@@ -1,5 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
-import { resources } from "./api";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import { resources, type ListParams } from "./api";
 import { sampleTemplates } from "./sampleData";
 import type { Customer, GeneratedSlip, Product } from "./types";
 
@@ -57,91 +57,131 @@ export function productsForCustomer(customer?: Customer) {
   return normalizeProducts(customer?.products || []);
 }
 
-export function useProducts() {
+const emptyMeta = { page: 1, limit: 25, total: 0, pages: 1 };
+
+export function useProducts(params?: ListParams) {
   return useQuery({
-    queryKey: ["products"],
+    queryKey: ["products", params],
     queryFn: async () => {
-      const customers = normalizeCustomers((await resources.customers.list()).data || []);
+      const response = await resources.customers.list(params);
+      const customers = normalizeCustomers(response.data || []);
       const customerProducts = customers.flatMap((customer) =>
         productsForCustomer(customer).map((product) => ({ ...product, assignedCustomerIds: [customer._id] }))
       );
-      return customerProducts;
+      return { data: customerProducts, meta: response.meta };
     },
-    select: (items) => normalizeProducts(items || []),
-    placeholderData: [],
-    retry: false
+    select: (result) => ({ data: normalizeProducts(result.data || []), meta: result.meta }),
+    placeholderData: keepPreviousData,
+    retry: false,
+    staleTime: 30_000,
+    gcTime: 300_000
   });
 }
 
-export function useCustomers() {
+export function useCustomers(params?: ListParams) {
   return useQuery({
-    queryKey: ["customers"],
-    queryFn: async () => normalizeCustomers((await resources.customers.list()).data || []),
-    select: (items) => normalizeCustomers(items || []),
-    placeholderData: [],
-    retry: false
-  });
-}
-
-export function useTemplates() {
-  return useQuery({
-    queryKey: ["templates"],
-    queryFn: async () => withFallback((await resources.templates.list()).data, sampleTemplates),
-    select: (items) => withFallback(items, sampleTemplates),
-    placeholderData: sampleTemplates,
-    retry: false
-  });
-}
-
-export function useSlips() {
-  return useQuery({
-    queryKey: ["slips"],
-    queryFn: async () => mergeSlips((await resources.slips.list()).data || []),
-    select: (items) => mergeSlips(items || [], []),
-    placeholderData: mergeSlips([]),
-    retry: false
-  });
-}
-
-export function usePresets() {
-  return useQuery({
-    queryKey: ["presets"],
-    queryFn: async () => (await resources.presets.list()).data || [],
-    select: (items) => items || [],
-    placeholderData: [],
-    retry: false
-  });
-}
-
-export function usePrintJobs() {
-  return useQuery({
-    queryKey: ["print-jobs"],
+    queryKey: ["customers", params],
     queryFn: async () => {
-      const response = await resources.slips.printJobs();
-      return Array.isArray(response.data) ? response.data : [];
+      const response = await resources.customers.list(params);
+      return { data: normalizeCustomers(response.data || []), meta: response.meta };
     },
-    select: (items) => items || [],
-    placeholderData: [],
-    retry: false
+    placeholderData: keepPreviousData,
+    retry: false,
+    staleTime: 30_000,
+    gcTime: 300_000
   });
 }
 
-export function useBackups() {
+export function useTemplates(params?: ListParams) {
   return useQuery({
-    queryKey: ["backups"],
-    queryFn: async () => (await resources.backups.list()).data || [],
-    select: (items) => items || [],
-    placeholderData: [],
-    retry: false
+    queryKey: ["templates", params],
+    queryFn: async () => {
+      const response = await resources.templates.list(params);
+      return { data: withFallback(response.data, sampleTemplates), meta: response.meta };
+    },
+    placeholderData: keepPreviousData,
+    retry: false,
+    staleTime: 30_000,
+    gcTime: 300_000
   });
 }
 
-export function useAuditLogs() {
+export function useSlips(params?: ListParams) {
   return useQuery({
-    queryKey: ["audit-logs"],
-    queryFn: async () => (await resources.audit.list()).data || [],
-    select: (items) => items || [],
-    placeholderData: [],
-    retry: false
+    queryKey: ["slips", params],
+    queryFn: async () => {
+      const response = await resources.slips.list(params);
+      // We only merge local slips on page 1
+      const isFirstPage = !params?.page || params.page === 1;
+      return { 
+        data: mergeSlips(response.data || [], isFirstPage ? readLocalSlips() : []),
+        meta: response.meta 
+      };
+    },
+    placeholderData: keepPreviousData,
+    retry: false,
+    staleTime: 30_000,
+    gcTime: 300_000
+  });
+}
+
+export function usePresets(params?: ListParams) {
+  return useQuery({
+    queryKey: ["presets", params],
+    queryFn: () => resources.presets.list(params),
+    placeholderData: keepPreviousData,
+    retry: false,
+    staleTime: 30_000,
+    gcTime: 300_000
+  });
+}
+
+export function usePrintJobs(params?: ListParams) {
+  return useQuery({
+    queryKey: ["print-jobs", params],
+    queryFn: async () => {
+      const response = await resources.slips.printJobs(params);
+      return { 
+        data: Array.isArray(response.data) ? response.data : [], 
+        meta: response.meta 
+      };
+    },
+    placeholderData: keepPreviousData,
+    retry: false,
+    staleTime: 30_000,
+    gcTime: 300_000
+  });
+}
+
+export function useBackups(params?: ListParams) {
+  return useQuery({
+    queryKey: ["backups", params],
+    queryFn: () => resources.backups.list(params),
+    placeholderData: keepPreviousData,
+    retry: false,
+    staleTime: 30_000,
+    gcTime: 300_000
+  });
+}
+
+export function useAuditLogs(params?: ListParams) {
+  return useQuery({
+    queryKey: ["audit-logs", params],
+    queryFn: () => resources.audit.list(params),
+    placeholderData: keepPreviousData,
+    retry: false,
+    staleTime: 30_000,
+    gcTime: 300_000
+  });
+}
+
+export function useTeamMembers(params?: ListParams) {
+  return useQuery({
+    queryKey: ["team", params],
+    queryFn: () => resources.team.list(params),
+    placeholderData: keepPreviousData,
+    retry: false,
+    staleTime: 30_000,
+    gcTime: 300_000
   });
 }

@@ -1,4 +1,8 @@
 import { ShieldCheck } from "lucide-react";
+import { Pagination } from "@/components/ui/Pagination";
+import { TableSkeleton } from "@/components/ui/TableSkeleton";
+import { usePagination } from "@/lib/usePagination";
+
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,7 +10,11 @@ import { Table, Td, Th } from "@/components/ui/table";
 import { useAuditLogs } from "@/lib/useWarehouseData";
 
 export function AuditLogsPage() {
-  const logs = useAuditLogs();
+  const { page, limit, setPage, setLimit } = usePagination();
+  const queryData = useAuditLogs({ page, limit });
+  const logs = queryData.data?.data || [];
+  const meta = queryData.data?.meta;
+  const isLoading = queryData.isLoading;
 
   return (
     <>
@@ -36,7 +44,7 @@ export function AuditLogsPage() {
               </tr>
             </thead>
             <tbody>
-              {logs.data?.map((log) => (
+                {logs.map((log: any) => (
                 <tr key={log._id}>
                   <Td className="font-mono">{log.action}</Td>
                   <Td>{log.user?.name || "System"}</Td>
@@ -47,7 +55,18 @@ export function AuditLogsPage() {
               ))}
             </tbody>
           </Table>
-        </CardContent>
+        
+            {meta && (
+              <Pagination
+                page={meta.page}
+                pages={meta.pages}
+                limit={meta.limit}
+                total={meta.total}
+                onPageChange={setPage}
+                onLimitChange={setLimit}
+              />
+            )}
+          </CardContent>
       </Card>
     </>
   );

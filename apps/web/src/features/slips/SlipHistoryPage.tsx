@@ -1,5 +1,10 @@
 import { Copy, Download, Printer, Search } from "lucide-react";
+import { Pagination } from "@/components/ui/Pagination";
+import { TableSkeleton } from "@/components/ui/TableSkeleton";
+import { usePagination } from "@/lib/usePagination";
+
 import { useMemo, useState } from "react";
+import { useDebounce } from "@/lib/useDebounce";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -20,18 +25,16 @@ function generatedSlipCount(slip: GeneratedSlip) {
 }
 
 export function SlipHistoryPage() {
-  const slips = useSlips();
+  const { page, limit, setPage, setLimit } = usePagination();
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
+  const queryData = useSlips({ page, limit, search: debouncedSearch });
+  const slips = queryData.data?.data || [];
+  const meta = queryData.data?.meta;
+  const isLoading = queryData.isLoading;
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const notify = useNotificationStore((state) => state.push);
-  const filteredSlips = useMemo(() => {
-    const q = search.toLowerCase().trim();
-    if (!q) return slips.data || [];
-    return (slips.data || []).filter((slip) =>
-      [slip.serialNumber, slip.orderReference, slip.product.name, slip.customer.name].some((value) => value?.toLowerCase().includes(q))
-    );
-  }, [search, slips.data]);
 
   const patchSlip = (id: string, patch: Partial<GeneratedSlip>) => {
     let updatedSlip: GeneratedSlip | undefined;
@@ -60,7 +63,7 @@ export function SlipHistoryPage() {
           </div>
           <div className="relative w-full max-w-sm">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input className="pl-9" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search serial or order reference" />
+            <Input className="pl-9" value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Search serial or order reference" />
           </div>
         </CardHeader>
         <CardContent>
@@ -79,7 +82,7 @@ export function SlipHistoryPage() {
               </tr>
             </thead>
             <tbody>
-              {filteredSlips.map((slip) => (
+              {slips.map((slip) => (
                 <tr key={slip._id}>
                   <Td className="font-mono font-semibold">{slip.serialNumber}</Td>
                   <Td>{slip.orderReference}</Td>
@@ -140,7 +143,18 @@ export function SlipHistoryPage() {
               ))}
             </tbody>
           </Table>
-        </CardContent>
+        
+            {meta && (
+              <Pagination
+                page={meta.page}
+                pages={meta.pages}
+                limit={meta.limit}
+                total={meta.total}
+                onPageChange={setPage}
+                onLimitChange={setLimit}
+              />
+            )}
+          </CardContent>
       </Card>
     </>
   );

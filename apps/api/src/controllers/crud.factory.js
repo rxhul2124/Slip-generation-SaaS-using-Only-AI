@@ -4,10 +4,8 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 export function crudController(repository, resourceName) {
   return {
     list: asyncHandler(async (req, res) => {
-      const result = await repository.list(req.companyId, req.query, { archivedAt: req.query.archived ? { $ne: null } : null });
-      if (!req.query.archived) {
-        result.items = result.items.filter((item) => !item.archivedAt);
-      }
+      const extraQuery = req.query.archived ? {} : { archivedAt: null };
+      const result = await repository.list(req.companyId, req.query, extraQuery);
       res.json({ status: "success", data: result.items, meta: result.meta });
     }),
 

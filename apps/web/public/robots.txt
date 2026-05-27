@@ -1,0 +1,23 @@
+User-agent: *
+Allow: /
+Disallow: /app
+Disallow: /onboarding
+Disallow: /products
+Disallow: /customers
+Disallow: /templates
+Disallow: /templates/builder
+Disallow: /presets
+Disallow: /generate
+Disallow: /bulk
+Disallow: /history
+Disallow: /analytics
+Disallow: /audit-logs
+Disallow: /team
+Disallow: /billing
+Disallow: /settings
+Disallow: /search
+Disallow: /print-queue
+Disallow: /backups
+Disallow: /activity
+
+Sitemap: https://slipora.in/sitemap.xml

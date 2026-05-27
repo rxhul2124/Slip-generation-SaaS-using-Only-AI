@@ -43,6 +43,14 @@ export const templateSchema = z.object({
     bleed: z.number().nonnegative().optional(),
     cropMarks: z.boolean().optional(),
     snapGrid: z.number().positive().optional(),
+    watermark: z
+      .object({
+        enabled: z.boolean(),
+        opacity: z.number().min(0).max(1),
+        size: z.number().min(10).max(95),
+        imageDataUrl: z.string().optional()
+      })
+      .optional(),
     elements: z.array(element).optional(),
     favorite: z.boolean().optional()
   })

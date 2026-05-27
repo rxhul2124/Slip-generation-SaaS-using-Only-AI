@@ -45,6 +45,18 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   return response.json() as Promise<T>;
 }
 
+export function buildQueryParams(params?: Record<string, string | number | boolean | undefined | null>) {
+  if (!params) return "";
+  const searchParams = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== null && value !== "") {
+      searchParams.append(key, String(value));
+    }
+  }
+  const query = searchParams.toString();
+  return query ? `?${query}` : "";
+}
+
 export const api = {
   get: <T>(path: string, options?: RequestOptions) => request<T>(path, options),
   post: <T>(path: string, body?: unknown, options?: RequestOptions) =>
@@ -54,41 +66,54 @@ export const api = {
   delete: <T>(path: string, options?: RequestOptions) => request<T>(path, { ...options, method: "DELETE" })
 };
 
+export interface ListParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  sort?: string;
+  [key: string]: string | number | boolean | undefined | null;
+}
+
 export const resources = {
   products: {
-    list: () => api.get<ApiList<import("./types").Product>>("/products"),
+    list: (params?: ListParams) => api.get<ApiList<import("./types").Product>>(`/products${buildQueryParams(params)}`),
     create: (body: unknown) => api.post<ApiItem<import("./types").Product>>("/products", body)
   },
   customers: {
-    list: () => api.get<ApiList<import("./types").Customer>>("/customers"),
+    list: (params?: ListParams) => api.get<ApiList<import("./types").Customer>>(`/customers${buildQueryParams(params)}`),
     create: (body: unknown) => api.post<ApiItem<import("./types").Customer>>("/customers", body),
     update: (id: string, body: unknown) => api.patch<ApiItem<import("./types").Customer>>(`/customers/${id}`, body),
     delete: (id: string) => api.delete<void>(`/customers/${id}`)
   },
   templates: {
-    list: () => api.get<ApiList<import("./types").SlipTemplate>>("/templates"),
-    create: (body: unknown) => api.post<ApiItem<import("./types").SlipTemplate>>("/templates", body)
+    list: (params?: ListParams) => api.get<ApiList<import("./types").SlipTemplate>>(`/templates${buildQueryParams(params)}`),
+    create: (body: unknown) => api.post<ApiItem<import("./types").SlipTemplate>>("/templates", body),
+    update: (id: string, body: unknown) => api.patch<ApiItem<import("./types").SlipTemplate>>(`/templates/${id}`, body),
+    delete: (id: string) => api.delete<void>(`/templates/${id}`)
   },
   presets: {
-    list: () => api.get<ApiList<Preset>>("/presets"),
+    list: (params?: ListParams) => api.get<ApiList<Preset>>(`/presets${buildQueryParams(params)}`),
     create: (body: unknown) => api.post<ApiItem<Preset>>("/presets", body)
   },
   slips: {
-    list: () => api.get<ApiList<import("./types").GeneratedSlip>>("/slips"),
+    list: (params?: ListParams) => api.get<ApiList<import("./types").GeneratedSlip>>(`/slips${buildQueryParams(params)}`),
     create: (body: unknown) => api.post<ApiItem<import("./types").GeneratedSlip>>("/slips", body),
     print: (id: string) => api.post<ApiItem<import("./types").GeneratedSlip>>(`/slips/${id}/print`),
     export: (id: string) => api.post<ApiItem<import("./types").GeneratedSlip>>(`/slips/${id}/export`),
-    printJobs: () => api.get<ApiItem<PrintJob[]> | ApiList<PrintJob>>("/slips/print-jobs"),
+    printJobs: (params?: ListParams) => api.get<ApiList<PrintJob>>(`/slips/print-jobs${buildQueryParams(params)}`),
     queuePrint: (body: unknown) => api.post<ApiItem<PrintJob>>("/slips/print-jobs", body)
   },
   search: {
     global: (query: string) => api.get<ApiItem<SearchResults>>(`/search?q=${encodeURIComponent(query)}`)
   },
   audit: {
-    list: () => api.get<ApiList<AuditLog>>("/audit-logs")
+    list: (params?: ListParams) => api.get<ApiList<AuditLog>>(`/audit-logs${buildQueryParams(params)}`)
+  },
+  team: {
+    list: (params?: ListParams) => api.get<ApiList<any>>(`/team${buildQueryParams(params)}`)
   },
   backups: {
-    list: () => api.get<ApiList<Backup>>("/backups"),
+    list: (params?: ListParams) => api.get<ApiList<Backup>>(`/backups${buildQueryParams(params)}`),
     exportWorkspace: () => api.post<ApiItem<Backup>>("/backups/export")
   },
   billing: {

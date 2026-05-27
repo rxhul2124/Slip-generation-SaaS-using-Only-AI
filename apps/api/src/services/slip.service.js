@@ -129,7 +129,7 @@ export async function createSlip(companyId, userId, payload) {
     printSettings: payload.printSettings,
     generatedBy: userId,
     contentSnapshot: {
-      company: company ? { _id: company._id, name: company.name } : undefined,
+      company: company ? { _id: company._id, name: company.name, logo: company.logo } : undefined,
       product,
       customer: customer.toObject(),
       template: template.toObject(),
@@ -150,6 +150,7 @@ export async function createSlip(companyId, userId, payload) {
     product,
     customer,
     template,
+    company: company ? { _id: company._id, name: company.name, logo: company.logo } : undefined,
     generatedBy: user
   };
 }
@@ -172,7 +173,8 @@ export async function findSlip(companyId, idOrSerial) {
   return {
     ...data,
     product: data.productSnapshot || data.contentSnapshot?.product || data.product,
-    companyName: data.companyName || data.contentSnapshot?.company?.name
+    companyName: data.companyName || data.contentSnapshot?.company?.name,
+    company: data.contentSnapshot?.company
   };
 }
 

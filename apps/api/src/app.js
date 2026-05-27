@@ -1,7 +1,7 @@
 import express from "express";
 import morgan from "morgan";
 import { env } from "./config/env.js";
-import { applySecurity } from "./middleware/security.js";
+import { applySecurity, sanitizeRequest } from "./middleware/security.js";
 import { apiLimiter } from "./middleware/rateLimiter.js";
 import { errorHandler, notFound } from "./middleware/errorHandler.js";
 import { csrfProtection } from "./middleware/csrf.js";
@@ -13,6 +13,7 @@ export function createApp() {
   applySecurity(app);
   app.use(express.json({ limit: "5mb" }));
   app.use(express.urlencoded({ extended: true, limit: "5mb" }));
+  app.use(sanitizeRequest);
   app.use(apiLimiter);
   app.use(csrfProtection);
 

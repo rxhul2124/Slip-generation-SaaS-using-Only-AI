@@ -28,15 +28,11 @@ const TeamPage = lazy(() => import("@/features/team/TeamPage").then((module) => 
 const TemplateBuilderPage = lazy(() => import("@/features/templates/TemplateBuilderPage").then((module) => ({ default: module.TemplateBuilderPage })));
 const TemplatesPage = lazy(() => import("@/features/templates/TemplatesPage").then((module) => ({ default: module.TemplatesPage })));
 
+import { PageLoader } from "@/components/ui/PageLoader";
+
 function screen(page: ReactNode) {
   return (
-    <Suspense
-      fallback={
-        <div className="grid min-h-[50vh] place-items-center">
-          <div className="rounded-lg border bg-card/80 px-4 py-3 text-sm font-semibold shadow-sm">Loading PackSlip module...</div>
-        </div>
-      }
-    >
+    <Suspense fallback={<PageLoader />}>
       {page}
     </Suspense>
   );
