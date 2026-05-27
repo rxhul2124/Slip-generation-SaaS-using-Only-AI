@@ -1,4 +1,8 @@
 import { Pause, Play, Printer, RefreshCw, Send } from "lucide-react";
+import { Pagination } from "@/components/ui/Pagination";
+import { TableSkeleton } from "@/components/ui/TableSkeleton";
+import { usePagination } from "@/lib/usePagination";
+
 import { useState } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Badge } from "@/components/ui/badge";
@@ -20,7 +24,11 @@ const statusTone = {
 } as const;
 
 export function PrintQueuePage() {
-  const jobs = usePrintJobs();
+  const { page, limit, setPage, setLimit } = usePagination();
+  const queryData = usePrintJobs({ page, limit });
+  const jobs = queryData.data?.data || [];
+  const meta = queryData.data?.meta;
+  const isLoading = queryData.isLoading;
   const notify = useNotificationStore((state) => state.push);
   const [silentPrint, setSilentPrint] = useState(false);
 
@@ -32,7 +40,7 @@ export function PrintQueuePage() {
         description="Manage queued browser prints, bulk PDFs, thermal jobs, reprints, silent mode, and printer readiness."
         actions={
           <>
-            <Button variant="outline" onClick={() => notify({ tone: "success", title: "Queue refreshed", body: `${jobs.data?.length || 0} jobs loaded.` })}>
+            <Button variant="outline" onClick={() => notify({ tone: "success", title: "Queue refreshed", body: `${jobs.length || 0} jobs loaded.` })}>
               <RefreshCw className="h-4 w-4" /> Refresh
             </Button>
             <Button onClick={() => notify({ tone: "info", title: "Batch queued", body: "The current ready slips were added to the print queue." })}>
@@ -48,7 +56,7 @@ export function PrintQueuePage() {
               <CardTitle>Queued Jobs</CardTitle>
               <CardDescription>Track print lifecycle across thermal, PDF, and browser print targets.</CardDescription>
             </div>
-            <Badge variant="success">{jobs.data?.filter((job) => job.status !== "completed").length || 0} active</Badge>
+            <Badge variant="success">{jobs.filter((job) => job.status !== "completed").length || 0} active</Badge>
           </CardHeader>
           <CardContent>
             <Table>
@@ -63,7 +71,7 @@ export function PrintQueuePage() {
                 </tr>
               </thead>
               <tbody>
-                {jobs.data?.map((job) => (
+                {jobs.map((job) => (
                   <tr key={job._id}>
                     <Td className="font-mono">{job._id}</Td>
                     <Td>{job.printer}</Td>
@@ -134,6 +142,17 @@ export function PrintQueuePage() {
             <div className="rounded-lg border bg-muted/40 p-3 text-sm text-muted-foreground">
               Desktop printer detection is exposed through Electron via `window.packslipDesktop.getPrinters()`.
             </div>
+          
+            {meta && (
+              <Pagination
+                page={meta.page}
+                pages={meta.pages}
+                limit={meta.limit}
+                total={meta.total}
+                onPageChange={setPage}
+                onLimitChange={setLimit}
+              />
+            )}
           </CardContent>
         </Card>
       </div>

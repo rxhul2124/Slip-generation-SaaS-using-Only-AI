@@ -40,6 +40,7 @@ import { getLocalTemplate, saveLocalTemplate } from "@/lib/localTemplates";
 import { useAuthStore } from "@/stores/authStore";
 import { hasFeature } from "@/lib/planLimits";
 import { UpgradeBadge } from "@/components/billing/FeatureGate";
+import { resources } from "@/lib/api";
 
 const pixelsPerMm = 96 / 25.4;
 const minElementWidth = 8;
@@ -55,7 +56,6 @@ const palette: Array<Pick<TemplateElement, "type" | "label" | "field" | "width" 
   { type: "field", label: "Quantity", field: "quantity", width: 28, height: 10 },
   { type: "barcode", label: "Barcode", field: "barcodeValue", width: 60, height: 26 },
   { type: "qr", label: "QR Code", field: "qrPayload", width: 24, height: 24 },
-  { type: "logo", label: "Company Logo", field: "company.logo", width: 28, height: 16 },
   { type: "field", label: "Customer", field: "customer.name", width: 64, height: 10 },
   { type: "field", label: "Destination", field: "destination", width: 74, height: 10 },
   { type: "field", label: "Serial", field: "serialNumber", width: 48, height: 9 },
@@ -69,6 +69,7 @@ const borderSwatches = ["#111827", "#0f766e", "#2563eb", "#f59e0b", "#e11d48"];
 const resizeHandles = ["nw", "ne", "sw", "se"] as const;
 
 type ResizeHandle = (typeof resizeHandles)[number];
+type TemplateSavePayload = Omit<SlipTemplate, "_id">;
 
 const handleStyles: Record<ResizeHandle, CSSProperties> = {
   nw: { left: -6, top: -6, cursor: "nwse-resize" },
@@ -89,6 +90,32 @@ function stringStyle(element: TemplateElement, key: string, fallback: string) {
 
 function boolStyle(element: TemplateElement, key: string) {
   return element.style?.[key] === true;
+}
+
+function imageUrl(value: unknown) {
+  if (typeof value === "string") return value;
+  if (!value || typeof value !== "object") return "";
+  const source = value as Record<string, unknown>;
+  return String(source.secureUrl || source.url || source.imageDataUrl || "");
+}
+
+function normalizedWatermark(template: SlipTemplate) {
+  return {
+    enabled: template.watermark?.enabled ?? false,
+    opacity: template.watermark?.opacity ?? 0.12,
+    size: template.watermark?.size ?? 55,
+    imageDataUrl: template.watermark?.imageDataUrl
+  };
+}
+
+function isApiTemplateId(id: string) {
+  return /^[a-f\d]{24}$/i.test(id);
+}
+
+function templateSavePayload(template: SlipTemplate): TemplateSavePayload {
+  const { _id, ...payload } = template;
+  void _id;
+  return payload;
 }
 
 function snapValue(value: number, snap = 1) {
@@ -193,7 +220,7 @@ function starterElements(width: number, height: number): TemplateElement[] {
 }
 
 function editableTemplate(template: SlipTemplate, patch: Partial<SlipTemplate> = {}): SlipTemplate {
-  const elements = patch.elements || (template.elements.length ? template.elements : starterElements(template.width, template.height));
+  const elements = (patch.elements || (template.elements.length ? template.elements : starterElements(template.width, template.height))).filter((element) => element.type !== "logo");
   return {
     ...template,
     ...patch,
@@ -309,8 +336,10 @@ function DraggableElement({
 export function TemplateBuilderPage() {
   const [searchParams] = useSearchParams();
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const watermarkInputRef = useRef<HTMLInputElement>(null);
   const setSidebarCollapsed = useUiStore((state) => state.setSidebarCollapsed);
-  const plan = useAuthStore((state) => state.company?.plan);
+  const company = useAuthStore((state) => state.company);
+  const plan = company?.plan;
   const canImportLogo = hasFeature(plan, "logoImport");
   const initialTemplate = useMemo<SlipTemplate>(() => {
     const requestedTemplate = getLocalTemplate(searchParams.get("template")) || sampleTemplates.find((item) => item._id === searchParams.get("template")) || sampleTemplate;
@@ -341,6 +370,8 @@ export function TemplateBuilderPage() {
   const notify = useNotificationStore((state) => state.push);
   const selected = useMemo(() => template.elements.find((element) => element.id === selectedId), [template, selectedId]);
   const livePreviewSlip = useMemo(() => placeholderSlip(template), [template]);
+  const watermark = normalizedWatermark(template);
+  const watermarkImage = watermark.imageDataUrl || imageUrl(company?.logo);
   const selectedPrintPage = printPages[printPage];
   const printGap = 3;
   const printMargin = 6;
@@ -370,6 +401,29 @@ export function TemplateBuilderPage() {
   const updateSelectedStyle = (patch: NonNullable<TemplateElement["style"]>) => {
     if (!selected) return;
     updateElement(selected.id, { style: { ...(selected.style || {}), ...patch } });
+  };
+
+  const updateWatermark = (patch: Partial<NonNullable<SlipTemplate["watermark"]>>) => {
+    setTemplate((current) => ({ ...current, watermark: { ...normalizedWatermark(current), ...patch } }));
+  };
+
+  const saveTemplate = async () => {
+    if (localStorage.getItem("packslip.accessToken") === "demo-local-session") {
+      saveLocalTemplate(template);
+      notify({ tone: "success", title: "Template saved", body: `${template.name} was saved locally for this demo session.` });
+      return;
+    }
+
+    try {
+      const payload = templateSavePayload(template);
+      const response = isApiTemplateId(template._id) ? await resources.templates.update(template._id, payload) : await resources.templates.create(payload);
+      const savedTemplate = response.data;
+      setTemplate(editableTemplate(savedTemplate));
+      saveLocalTemplate(savedTemplate);
+      notify({ tone: "success", title: "Template saved", body: `${savedTemplate.name} was saved to your workspace.` });
+    } catch (error) {
+      notify({ tone: "error", title: "Save failed", body: error instanceof Error ? error.message : "The API save failed." });
+    }
   };
 
   const addElement = (item: (typeof palette)[number]) => {
@@ -624,6 +678,15 @@ export function TemplateBuilderPage() {
     reader.readAsDataURL(file);
   };
 
+  const uploadWatermarkLogo = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      updateWatermark({ enabled: true, imageDataUrl: String(reader.result || "") });
+      notify({ tone: "success", title: "Watermark logo added", body: file.name });
+    };
+    reader.readAsDataURL(file);
+  };
+
   return (
     <>
       <PageHeader
@@ -638,10 +701,7 @@ export function TemplateBuilderPage() {
               <Redo2 className="h-4 w-4" />
             </Button>
             <Button
-              onClick={() => {
-                saveLocalTemplate(template);
-                notify({ tone: "success", title: "Template saved", body: `${template.name} was saved locally.` });
-              }}
+              onClick={() => void saveTemplate()}
             >
               <Save className="h-4 w-4" /> Save
             </Button>
@@ -671,6 +731,17 @@ export function TemplateBuilderPage() {
                 onChange={(event) => {
                   const file = event.target.files?.[0];
                   if (file) createTemplateFromImage(file);
+                  event.currentTarget.value = "";
+                }}
+              />
+              <input
+                ref={watermarkInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) uploadWatermarkLogo(file);
                   event.currentTarget.value = "";
                 }}
               />
@@ -908,6 +979,49 @@ export function TemplateBuilderPage() {
             </label>
 
             <div className="space-y-3 border-t pt-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-sm font-bold">Logo watermark</div>
+                <Switch checked={watermark.enabled} onCheckedChange={(enabled) => updateWatermark({ enabled })} label="Enabled" />
+              </div>
+              <Button type="button" variant="outline" size="sm" className="w-full" onClick={() => watermarkInputRef.current?.click()}>
+                <Upload className="h-4 w-4" /> Upload watermark logo
+              </Button>
+              {watermarkImage ? (
+                <div className="grid h-16 place-items-center rounded-md border bg-white p-2">
+                  <img src={watermarkImage} alt="" className="max-h-full max-w-full object-contain" />
+                </div>
+              ) : null}
+              <label className="block space-y-1 text-sm">
+                <span className="flex items-center justify-between gap-2 font-semibold">
+                  Opacity <span className="text-xs text-muted-foreground">{Math.round(watermark.opacity * 100)}%</span>
+                </span>
+                <input
+                  className="w-full accent-[hsl(var(--primary))]"
+                  type="range"
+                  min="0.03"
+                  max="0.5"
+                  step="0.01"
+                  value={watermark.opacity}
+                  onChange={(event) => updateWatermark({ opacity: Number(event.target.value) })}
+                />
+              </label>
+              <label className="block space-y-1 text-sm">
+                <span className="flex items-center justify-between gap-2 font-semibold">
+                  Size <span className="text-xs text-muted-foreground">{watermark.size}%</span>
+                </span>
+                <input
+                  className="w-full accent-[hsl(var(--primary))]"
+                  type="range"
+                  min="15"
+                  max="90"
+                  step="1"
+                  value={watermark.size}
+                  onChange={(event) => updateWatermark({ size: Number(event.target.value) })}
+                />
+              </label>
+            </div>
+
+            <div className="space-y-3 border-t pt-3">
               <div className="text-sm font-bold">Print page fit</div>
               <div className="grid grid-cols-2 gap-2">
                 <label className="space-y-1 text-xs font-semibold uppercase text-muted-foreground">
@@ -985,6 +1099,20 @@ export function TemplateBuilderPage() {
                         alt=""
                         className="absolute inset-0 h-full w-full object-fill"
                         style={{ opacity: referenceImage.opacity, mixBlendMode: "multiply" }}
+                      />
+                    ) : null}
+                    {watermark.enabled && watermarkImage ? (
+                      <img
+                        src={watermarkImage}
+                        alt=""
+                        className="pointer-events-none absolute left-1/2 top-1/2 object-contain"
+                        style={{
+                          width: mmToCssPx(template.width) * zoom * (watermark.size / 100),
+                          height: mmToCssPx(template.height) * zoom * (watermark.size / 100),
+                          opacity: watermark.opacity,
+                          transform: "translate(-50%, -50%)",
+                          zIndex: 0
+                        }}
                       />
                     ) : null}
                     {template.elements.map((element) => (

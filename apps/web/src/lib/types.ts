@@ -86,6 +86,12 @@ export interface SlipTemplate {
   bleed: number;
   cropMarks: boolean;
   snapGrid: number;
+  watermark?: {
+    enabled: boolean;
+    opacity: number;
+    size: number;
+    imageDataUrl?: string;
+  };
   elements: TemplateElement[];
 }
 
@@ -98,7 +104,7 @@ export interface GeneratedSlip {
   customer: Customer;
   template: SlipTemplate;
   companyName?: string;
-  company?: { name?: string };
+  company?: { name?: string; logo?: unknown };
   quantity: number;
   quantityUnit?: QuantityUnit;
   displayWeight?: { value?: number; unit?: WeightUnit | string };
@@ -199,10 +205,17 @@ export interface SearchResults {
   slips: GeneratedSlip[];
 }
 
+export interface PaginationMeta {
+  page: number;
+  limit: number;
+  total: number;
+  pages: number;
+}
+
 export interface ApiList<T> {
   status: "success";
   data: T[];
-  meta?: { page: number; limit: number; total: number; pages: number };
+  meta: PaginationMeta;
 }
 
 export interface ApiItem<T> {

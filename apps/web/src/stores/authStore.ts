@@ -18,6 +18,7 @@ interface AuthUser {
 interface Company {
   id: string;
   name: string;
+  logo?: unknown;
   plan: "free" | "pro" | "enterprise";
 }
 

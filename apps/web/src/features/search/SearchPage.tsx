@@ -17,12 +17,12 @@ export function SearchPage() {
 
   const results = useMemo(
     () => ({
-      products: (products.data || []).filter((item) => [item.name, item.sku, item.barcode, item.category].some((value) => value?.toLowerCase().includes(q))),
-      customers: (customers.data || []).filter((item) => [item.name, item.email, item.phone, item.taxNumber].some((value) => value?.toLowerCase().includes(q))),
-      templates: (templates.data || []).filter((item) => [item.name, item.format].some((value) => value?.toLowerCase().includes(q))),
-      slips: (slips.data || []).filter((item) => [item.serialNumber, item.orderReference, item.customer.name, item.product.name].some((value) => value?.toLowerCase().includes(q)))
+      products: (products.data?.data || []).filter((item: any) => [item.name, item.sku, item.barcode, item.category].some((value) => value?.toLowerCase().includes(q))),
+      customers: (customers.data?.data || []).filter((item: any) => [item.name, item.email, item.phone, item.taxNumber].some((value) => value?.toLowerCase().includes(q))),
+      templates: (templates.data?.data || []).filter((item: any) => [item.name, item.format].some((value) => value?.toLowerCase().includes(q))),
+      slips: (slips.data?.data || []).filter((item: any) => [item.serialNumber, item.orderReference, item.customer.name, item.product.name].some((value) => value?.toLowerCase().includes(q)))
     }),
-    [customers.data, products.data, q, slips.data, templates.data]
+    [customers.data?.data, products.data?.data, q, slips.data?.data, templates.data?.data]
   );
 
   const total = results.products.length + results.customers.length + results.templates.length + results.slips.length;

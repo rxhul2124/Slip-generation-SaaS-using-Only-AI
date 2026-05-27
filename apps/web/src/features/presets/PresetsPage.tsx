@@ -1,4 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Pagination } from "@/components/ui/Pagination";
+import { TableSkeleton } from "@/components/ui/TableSkeleton";
+import { usePagination } from "@/lib/usePagination";
+
 import { Layers3, PackageCheck, Plus, Star } from "lucide-react";
 import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -16,15 +20,19 @@ import { useNotificationStore } from "@/stores/notificationStore";
 import { FeatureGate, UpgradeBadge } from "@/components/billing/FeatureGate";
 
 export function PresetsPage() {
-  const presets = usePresets();
+  const { page, limit, setPage, setLimit } = usePagination();
+  const queryData = usePresets({ page, limit });
+  const presets = queryData.data?.data || [];
+  const meta = queryData.data?.meta;
+  const isLoading = queryData.isLoading;
   const products = useProducts();
   const customers = useCustomers();
   const templates = useTemplates();
   const queryClient = useQueryClient();
   const notify = useNotificationStore((state) => state.push);
-  const productOptions = products.data || [];
-  const customerOptions = customers.data || [];
-  const templateOptions = templates.data?.length ? templates.data : sampleTemplates;
+  const productOptions = products.data?.data || [];
+  const customerOptions = customers.data?.data || [];
+  const templateOptions = templates.data?.data || sampleTemplates;
   const [name, setName] = useState("");
   const [product, setProduct] = useState("");
   const [customer, setCustomer] = useState("");
@@ -86,7 +94,7 @@ export function PresetsPage() {
               <CardTitle>Preset Library</CardTitle>
               <CardDescription>Operational shortcuts for marketplace, export, fragile, and warehouse workflows.</CardDescription>
             </div>
-            <Badge variant="success">{presets.data?.length || 0} active</Badge>
+            <Badge variant="success">{presets.length || 0} active</Badge>
           </CardHeader>
           <CardContent>
             <Table>
@@ -100,7 +108,7 @@ export function PresetsPage() {
                 </tr>
               </thead>
               <tbody>
-                {presets.data?.map((preset) => (
+                {presets.map((preset) => (
                   <tr key={preset._id}>
                     <Td>
                       <span className="flex items-center gap-2 font-semibold">
@@ -175,6 +183,17 @@ export function PresetsPage() {
                 {selectedTemplate ? `${selectedTemplate.thermalMode ? "203 DPI thermal label" : "300 DPI sheet export"} - ${selectedTemplate.format}` : "Select a template to preview print settings."}
               </div>
             </div>
+          
+            {meta && (
+              <Pagination
+                page={meta.page}
+                pages={meta.pages}
+                limit={meta.limit}
+                total={meta.total}
+                onPageChange={setPage}
+                onLimitChange={setLimit}
+              />
+            )}
           </CardContent>
         </Card>
       </div>

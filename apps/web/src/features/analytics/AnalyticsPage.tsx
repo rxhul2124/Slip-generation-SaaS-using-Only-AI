@@ -1,9 +1,12 @@
-import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { lazy, Suspense } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useCustomers, useProducts, useSlips, useTemplates } from "@/lib/useWarehouseData";
 import { FeatureGate } from "@/components/billing/FeatureGate";
+import { ComponentLoader } from "@/components/ui/ComponentLoader";
+
+const AnalyticsCharts = lazy(() => import("./AnalyticsCharts").then((m) => ({ default: m.AnalyticsCharts })));
 
 export function AnalyticsPage() {
   const products = useProducts();
@@ -14,13 +17,13 @@ export function AnalyticsPage() {
     const hour = Number(label.slice(0, 2));
     return {
       label,
-      slips: slips.data?.filter((slip) => new Date(slip.createdAt).getHours() === hour).length || 0
+      slips: slips.data?.data?.filter((slip) => new Date(slip.createdAt).getHours() === hour).length || 0
     };
   });
   const usage =
-    products.data?.map((product) => ({
+    products.data?.data?.map((product) => ({
       name: product.name,
-      value: slips.data?.filter((slip) => slip.product._id === product._id || slip.product.sku === product.sku).length || 0
+      value: slips.data?.data?.filter((slip) => slip.product._id === product._id || slip.product.sku === product.sku).length || 0
     })) || [];
   const colors = ["#0f766e", "#f59e0b", "#64748b"];
 
@@ -33,68 +36,26 @@ export function AnalyticsPage() {
         description="See daily slips, top products, busy companies, and peak print times."
         actions={<Badge variant="success">Ready</Badge>}
       />
-      <div className="grid gap-4 xl:grid-cols-[1.4fr_1fr]">
-        <Card>
-          <CardHeader>
-            <div>
-              <CardTitle>Peak Usage Times</CardTitle>
-              <CardDescription>Slip generation activity by hour.</CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={daily}>
-                  <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                  <XAxis dataKey="label" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="slips" fill="#0f766e" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <div>
-              <CardTitle>Product Usage</CardTitle>
-              <CardDescription>Share of slips by product.</CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={usage.filter((item) => item.value > 0)} dataKey="value" nameKey="name" outerRadius={108} label>
-                    {usage.map((entry, index) => (
-                      <Cell key={entry.name} fill={colors[index % colors.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <Suspense fallback={<ComponentLoader className="min-h-[400px]" />}>
+        <AnalyticsCharts daily={daily} usage={usage} colors={colors} />
+      </Suspense>
       <div className="mt-4 grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader>
             <CardTitle>Most Shipped Product</CardTitle>
-            <CardDescription>{products.data?.[0]?.name}</CardDescription>
+            <CardDescription>{products.data?.data?.[0]?.name}</CardDescription>
           </CardHeader>
         </Card>
         <Card>
           <CardHeader>
             <CardTitle>Busiest Customer</CardTitle>
-            <CardDescription>{customers.data?.[0]?.name}</CardDescription>
+            <CardDescription>{customers.data?.data?.[0]?.name}</CardDescription>
           </CardHeader>
         </Card>
         <Card>
           <CardHeader>
             <CardTitle>Top Template</CardTitle>
-            <CardDescription>{templates.data?.[0]?.name}</CardDescription>
+            <CardDescription>{templates.data?.data?.[0]?.name}</CardDescription>
           </CardHeader>
         </Card>
       </div>

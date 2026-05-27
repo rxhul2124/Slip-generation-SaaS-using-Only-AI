@@ -5,9 +5,17 @@ import { AppError } from "../utils/AppError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { hashToken, randomToken } from "../utils/tokens.js";
 import { sendMail } from "../utils/mailer.js";
+import { pagination, sortOption } from "../utils/apiFeatures.js";
 
 export const listMembers = asyncHandler(async (req, res) => {
-  const users = await User.find({ "memberships.company": req.companyId }).select("name email avatarUrl memberships");
+  const { page, limit, skip } = pagination(req.query);
+  const query = { "memberships.company": req.companyId };
+
+  const [users, total] = await Promise.all([
+    User.find(query).sort(sortOption(req.query.sort)).skip(skip).limit(limit).select("name email avatarUrl memberships"),
+    User.countDocuments(query)
+  ]);
+
   const members = users.map((user) => ({
     id: user._id,
     name: user.name,
@@ -15,7 +23,8 @@ export const listMembers = asyncHandler(async (req, res) => {
     avatarUrl: user.avatarUrl,
     membership: user.memberships.find((membership) => membership.company.toString() === req.companyId)
   }));
-  res.json({ status: "success", data: members });
+  
+  res.json({ status: "success", data: members, meta: { page, limit, total, pages: Math.ceil(total / limit) } });
 });
 
 export const invite = asyncHandler(async (req, res) => {

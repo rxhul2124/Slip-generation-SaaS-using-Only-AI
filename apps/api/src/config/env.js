@@ -7,18 +7,30 @@ const number = (value, fallback) => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
+const required = (name) => {
+  const value = process.env[name];
+  if (!value) throw new Error(`${name} must be set in the environment`);
+  return value;
+};
+
+const strongSecret = (name) => {
+  const value = required(name);
+  if (value.length < 32) throw new Error(`${name} must be at least 32 characters long`);
+  return value;
+};
+
 export const env = {
   nodeEnv: process.env.NODE_ENV || "development",
   port: number(process.env.PORT, 5000),
-  mongoUri: process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/packslip",
+  mongoUri: required("MONGODB_URI"),
   clientUrl: process.env.CLIENT_URL || "http://localhost:5173",
   apiUrl: process.env.API_URL || "http://localhost:5000/api/v1",
-  jwtAccessSecret: process.env.JWT_ACCESS_SECRET || "dev-access-secret-change-me",
-  jwtRefreshSecret: process.env.JWT_REFRESH_SECRET || "dev-refresh-secret-change-me",
+  jwtAccessSecret: strongSecret("JWT_ACCESS_SECRET"),
+  jwtRefreshSecret: strongSecret("JWT_REFRESH_SECRET"),
   jwtAccessExpiresIn: process.env.JWT_ACCESS_EXPIRES_IN || "15m",
   jwtRefreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || "30d",
-  cookieSecret: process.env.COOKIE_SECRET || "dev-cookie-secret",
-  csrfSecret: process.env.CSRF_SECRET || "dev-csrf-secret",
+  cookieSecret: strongSecret("COOKIE_SECRET"),
+  csrfSecret: strongSecret("CSRF_SECRET"),
   bcryptRounds: number(process.env.BCRYPT_ROUNDS, 12),
   smtp: {
     host: process.env.SMTP_HOST,

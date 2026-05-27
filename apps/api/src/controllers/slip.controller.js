@@ -7,7 +7,17 @@ import { parseCsv } from "../utils/csv.js";
 import * as slipService from "../services/slip.service.js";
 import { queuePrintJob, listPrintJobs } from "../services/printQueue.service.js";
 
-export const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 * 1024 * 1024 } });
+const allowedCsvTypes = new Set(["text/csv", "application/csv", "application/vnd.ms-excel", "text/plain"]);
+
+export const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, callback) => {
+    const validType = allowedCsvTypes.has(file.mimetype);
+    const validExtension = file.originalname.toLowerCase().endsWith(".csv");
+    callback(validType && validExtension ? null : new Error("Invalid CSV upload"), validType && validExtension);
+  }
+});
 const repo = new TenantRepository(GeneratedSlip, ["serialNumber", "orderReference", "destination"], ["status"]);
 
 export const list = asyncHandler(async (req, res) => {
@@ -17,7 +27,8 @@ export const list = asyncHandler(async (req, res) => {
     return {
       ...data,
       product: data.productSnapshot || data.contentSnapshot?.product || data.product,
-      companyName: data.companyName || data.contentSnapshot?.company?.name
+      companyName: data.companyName || data.contentSnapshot?.company?.name,
+      company: data.contentSnapshot?.company
     };
   });
   res.json({ status: "success", data: result.items, meta: result.meta });
@@ -93,6 +104,6 @@ export const queuePrint = asyncHandler(async (req, res) => {
 });
 
 export const printJobs = asyncHandler(async (req, res) => {
-  const jobs = await listPrintJobs(req.companyId);
-  res.json({ status: "success", data: jobs });
+  const result = await listPrintJobs(req.companyId, req.query);
+  res.json({ status: "success", data: result.items, meta: result.meta });
 });

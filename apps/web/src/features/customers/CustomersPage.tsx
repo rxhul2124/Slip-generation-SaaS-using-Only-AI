@@ -233,13 +233,20 @@ function ProductDetail({ product }: { product: Product }) {
   );
 }
 
+import { Pagination } from "@/components/ui/Pagination";
+import { usePagination } from "@/lib/usePagination";
+import { TableSkeleton } from "@/components/ui/TableSkeleton";
+
 export function CustomersPage() {
-  const customersQuery = useCustomers();
-  const customers = useMemo(() => customersQuery.data || [], [customersQuery.data]);
+  const { page, limit, setPage, setLimit } = usePagination();
+  const customersQuery = useCustomers({ page, limit });
+  const customers = useMemo(() => customersQuery.data?.data || [], [customersQuery.data]);
+  const meta = customersQuery.data?.meta;
+  
   const plan = useAuthStore((state) => state.company?.plan);
   const limits = limitsFor(plan);
   const totalProducts = customers.reduce((sum, customer) => sum + (customer.products?.length || 0), 0);
-  const customerLimitReached = limits.customers !== Infinity && customers.length >= limits.customers;
+  const customerLimitReached = limits.customers !== Infinity && (meta?.total || 0) >= limits.customers;
   const productLimitReached = limits.products !== Infinity && totalProducts >= limits.products;
   const queryClient = useQueryClient();
   const notify = useNotificationStore((state) => state.push);
@@ -438,11 +445,24 @@ export function CustomersPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {customers.map((customer) => {
-                    const products = customer.products || [];
-                    const expanded = expandedCustomerId === customer._id;
-                    return (
-                      <Fragment key={customer._id}>
+                  {customersQuery.isLoading ? (
+                    <tr>
+                      <Td colSpan={5} className="p-0 border-0">
+                        <TableSkeleton columns={5} />
+                      </Td>
+                    </tr>
+                  ) : customers.length === 0 ? (
+                    <tr>
+                      <Td colSpan={5}>
+                        <EmptyState title="No companies found" body="Get started by adding a company." />
+                      </Td>
+                    </tr>
+                  ) : (
+                    customers.map((customer) => {
+                      const products = customer.products || [];
+                      const expanded = expandedCustomerId === customer._id;
+                      return (
+                        <Fragment key={customer._id}>
                         <tr>
                           <Td>
                             <div className="flex items-center gap-2 font-semibold">
@@ -568,10 +588,21 @@ export function CustomersPage() {
                         ) : null}
                       </Fragment>
                     );
-                  })}
+                  })
+                )}
                 </tbody>
               </Table>
             </div>
+            {meta && (
+              <Pagination
+                page={meta.page}
+                pages={meta.pages}
+                limit={meta.limit}
+                total={meta.total}
+                onPageChange={setPage}
+                onLimitChange={setLimit}
+              />
+            )}
           </CardContent>
         </Card>
 

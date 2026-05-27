@@ -43,7 +43,20 @@ function boolStyle(element: TemplateElement, key: string) {
   return element.style?.[key] === true;
 }
 
+function imageUrl(value: unknown) {
+  if (typeof value === "string") return value;
+  if (!value || typeof value !== "object") return "";
+  const source = value as Record<string, unknown>;
+  return String(source.secureUrl || source.url || source.imageDataUrl || "");
+}
+
+function watermarkSource(slip: GeneratedSlip) {
+  return slip.template.watermark?.imageDataUrl || imageUrl(slip.company?.logo);
+}
+
 function ElementView({ element, slip }: { element: TemplateElement; slip: GeneratedSlip }) {
+  if (element.type === "logo") return null;
+
   const highlighted = boolStyle(element, "highlight");
   const borderColor = stringStyle(element, "borderColor", highlighted ? "#f59e0b" : "#111827");
   const style: CSSProperties = {
@@ -139,6 +152,10 @@ function IndustrialSlipView({ slip }: { slip: GeneratedSlip }) {
 
 export function SlipRenderer({ slip, scale = 1 }: { slip: GeneratedSlip; scale?: number }) {
   const template = slip.template;
+  const watermark = template.watermark;
+  const watermarkImage = watermark?.enabled ? watermarkSource(slip) : "";
+  const watermarkOpacity = watermark?.opacity ?? 0.12;
+  const watermarkSize = watermark?.size ?? 55;
   const width = mmToCssPx(template.width) * scale;
   const height = mmToCssPx(template.height) * scale;
 
@@ -161,6 +178,20 @@ export function SlipRenderer({ slip, scale = 1 }: { slip: GeneratedSlip; scale?:
           height: mmToCssPx(template.height)
         }}
       >
+        {watermark?.enabled && watermarkImage ? (
+          <img
+            src={watermarkImage}
+            alt=""
+            className="pointer-events-none absolute left-1/2 top-1/2 object-contain"
+            style={{
+              width: mmToCssPx(template.width) * (watermarkSize / 100),
+              height: mmToCssPx(template.height) * (watermarkSize / 100),
+              opacity: watermarkOpacity,
+              transform: "translate(-50%, -50%)",
+              zIndex: 0
+            }}
+          />
+        ) : null}
         {template.renderer === "industrial" ? (
           <IndustrialSlipView slip={slip} />
         ) : (

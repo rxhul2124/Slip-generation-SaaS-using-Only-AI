@@ -1,4 +1,5 @@
 import { PrintJob } from "../models/PrintJob.js";
+import { pagination, sortOption } from "../utils/apiFeatures.js";
 
 export function queuePrintJob(companyId, userId, payload) {
   return PrintJob.create({
@@ -12,6 +13,14 @@ export function queuePrintJob(companyId, userId, payload) {
   });
 }
 
-export function listPrintJobs(companyId) {
-  return PrintJob.find({ company: companyId }).sort("-createdAt").populate("slips", "serialNumber status");
+export async function listPrintJobs(companyId, queryString = {}) {
+  const { page, limit, skip } = pagination(queryString);
+  const query = { company: companyId };
+  
+  const [items, total] = await Promise.all([
+    PrintJob.find(query).sort(sortOption(queryString.sort)).skip(skip).limit(limit).populate("slips", "serialNumber status"),
+    PrintJob.countDocuments(query)
+  ]);
+
+  return { items, meta: { page, limit, total, pages: Math.ceil(total / limit) } };
 }

@@ -45,8 +45,8 @@ export function OverviewPage() {
   const customers = useCustomers();
   const templates = useTemplates();
   const slips = useSlips();
-  const totalPrints = slips.data?.reduce((sum, slip) => sum + slip.printedCount, 0) || 0;
-  const totalExports = slips.data?.reduce((sum, slip) => sum + slip.exportedCount, 0) || 0;
+  const totalPrints = slips.data?.data?.reduce((sum, slip) => sum + slip.printedCount, 0) || 0;
+  const totalExports = slips.data?.data?.reduce((sum, slip) => sum + slip.exportedCount, 0) || 0;
 
   return (
     <>
@@ -67,7 +67,7 @@ export function OverviewPage() {
       />
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard label="Total slips generated" value={formatNumber(slips.data?.length || 0)} icon={Boxes} detail="No slips generated yet" />
+        <MetricCard label="Total slips generated" value={formatNumber(slips.data?.data?.length || 0)} icon={Boxes} detail="No slips generated yet" />
         <MetricCard label="Total prints" value={formatNumber(totalPrints)} icon={Printer} detail="No print jobs yet" />
         <MetricCard label="Total exports" value={formatNumber(totalExports)} icon={FileDown} detail="No exports yet" />
         <MetricCard label="Active printers" value="0" icon={Activity} detail="No printers connected" />
@@ -85,15 +85,15 @@ export function OverviewPage() {
             <span className="flex items-center gap-2 text-sm font-semibold">
               <Star className="h-4 w-4 text-accent" /> Product
             </span>
-            <span className="text-sm text-muted-foreground">{products.data?.[0]?.name || "No products yet"}</span>
+            <span className="text-sm text-muted-foreground">{products.data?.data?.[0]?.name || "No products yet"}</span>
           </div>
           <div className="flex items-center justify-between rounded-md border p-3">
             <span className="text-sm font-semibold">Customer</span>
-            <span className="text-sm text-muted-foreground">{customers.data?.[0]?.name || "No customers yet"}</span>
+            <span className="text-sm text-muted-foreground">{customers.data?.data?.[0]?.name || "No customers yet"}</span>
           </div>
           <div className="flex items-center justify-between rounded-md border p-3">
             <span className="text-sm font-semibold">Template</span>
-            <span className="text-sm text-muted-foreground">{templates.data?.[0]?.name || "Default templates"}</span>
+            <span className="text-sm text-muted-foreground">{templates.data?.data?.[0]?.name || "Default templates"}</span>
           </div>
         </CardContent>
       </Card>
@@ -106,7 +106,7 @@ export function OverviewPage() {
           </div>
         </CardHeader>
         <CardContent>
-          {slips.data?.length ? (
+          {slips.data?.data?.length ? (
           <div className="overflow-x-auto">
             <Table>
               <thead>
@@ -119,7 +119,7 @@ export function OverviewPage() {
                 </tr>
               </thead>
               <tbody>
-                {slips.data?.map((slip) => (
+                {slips.data?.data?.map((slip) => (
                   <tr key={slip._id}>
                     <Td className="font-mono font-semibold">{slip.serialNumber}</Td>
                     <Td>{slip.product.name}</Td>
