@@ -408,7 +408,7 @@ export function TemplateBuilderPage() {
   };
 
   const saveTemplate = async () => {
-    if (localStorage.getItem("packslip.accessToken") === "demo-local-session") {
+    if (localStorage.getItem("slipora.accessToken") === "demo-local-session") {
       saveLocalTemplate(template);
       notify({ tone: "success", title: "Template saved", body: `${template.name} was saved locally for this demo session.` });
       return;

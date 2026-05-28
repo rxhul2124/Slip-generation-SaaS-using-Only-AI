@@ -86,7 +86,7 @@ function ProductPreview() {
         <span className="h-2.5 w-2.5 rounded-full bg-slate-300 dark:bg-white/30" />
         <span className="h-2.5 w-2.5 rounded-full bg-slate-300 dark:bg-white/30" />
         <span className="h-2.5 w-2.5 rounded-full bg-slate-300 dark:bg-white/30" />
-        <span className="ml-3 text-xs font-semibold text-muted-foreground">PackSlip workspace</span>
+        <span className="ml-3 text-xs font-semibold text-muted-foreground">Slipora workspace</span>
       </div>
       <div className="grid gap-3 p-3 md:grid-cols-[0.9fr_1.4fr]">
         <div className="rounded-lg border border-slate-900/10 bg-[#f7f9fc] p-4 dark:border-white/10 dark:bg-[#0b0e14]">
@@ -105,7 +105,7 @@ function ProductPreview() {
             ))}
           </div>
           <div className="mt-4 overflow-hidden rounded-md border border-slate-900/10 dark:border-white/10">
-            <img src="/landing-hero.png" alt="PackSlip dashboard preview" className="h-28 w-full object-cover object-top opacity-90" />
+            <img src="/landing-hero.png" alt="Slipora dashboard preview" className="h-28 w-full object-cover object-top opacity-90" />
           </div>
         </div>
         <div className="rounded-lg border border-slate-900/10 bg-[linear-gradient(rgba(15,23,42,0.06)_1px,transparent_1px),linear-gradient(90deg,rgba(15,23,42,0.06)_1px,transparent_1px)] bg-[size:18px_18px] p-6 dark:border-white/10 dark:bg-[linear-gradient(rgba(255,255,255,0.06)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.06)_1px,transparent_1px)]">
@@ -159,7 +159,7 @@ export function LandingPage() {
       <header className="sticky top-0 z-50 border-b border-slate-900/10 bg-white/86 backdrop-blur-xl dark:border-white/10 dark:bg-[#0b0e14]/92">
         <div className="mx-auto flex h-14 max-w-[1280px] items-center gap-4 px-4 sm:px-6">
           <Link to="/" className="flex items-center gap-2 text-sm font-black tracking-tight">
-            PackSlip
+            Slipora
             <span className="hidden rounded bg-[#e6eefc] px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-[#0051d5] dark:bg-[#102344] dark:text-[#83b2ff] sm:inline">Slip Ops</span>
           </Link>
           <nav className="ml-auto hidden items-center gap-5 text-xs font-semibold md:flex">
@@ -208,7 +208,7 @@ export function LandingPage() {
               Design, validate, and print packing slips from one workspace.
             </h1>
             <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-muted-foreground">
-              PackSlip keeps products, customers, templates, print previews, and plan controls in one clean workflow so daily slip generation feels predictable.
+              Slipora keeps products, customers, templates, print previews, and plan controls in one clean workflow so daily slip generation feels predictable.
             </p>
             <div className="mt-7 flex flex-wrap justify-center gap-3">
               <Button asChild className="bg-[#0051d5] text-white hover:bg-[#003ea8]">
@@ -344,7 +344,7 @@ export function LandingPage() {
       <footer className="border-t bg-[#f2f4f7] dark:border-white/10 dark:bg-[#0b0e14]">
         <div className="mx-auto grid max-w-[1280px] gap-10 px-4 py-12 sm:px-6 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
           <div>
-            <Link to="/" className="font-black">PackSlip</Link>
+            <Link to="/" className="font-black">Slipora</Link>
             <p className="mt-2 max-w-xs text-sm leading-6 text-muted-foreground">Packing slip generation, templates, printing, and workspace controls for operations teams.</p>
           </div>
           {footerGroups.map((group) => (
@@ -360,7 +360,7 @@ export function LandingPage() {
             </div>
           ))}
         </div>
-        <div className="border-t border-slate-900/10 py-4 text-center text-xs text-muted-foreground dark:border-white/10">Copyright 2026 PackSlip. All rights reserved.</div>
+        <div className="border-t border-slate-900/10 py-4 text-center text-xs text-muted-foreground dark:border-white/10">Copyright 2026 Slipora. All rights reserved.</div>
       </footer>
     </main>
   );

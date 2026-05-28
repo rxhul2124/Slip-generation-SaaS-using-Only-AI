@@ -277,7 +277,7 @@ export const sampleAuditLogs: AuditLog[] = [
     _id: "audit-login",
     action: "auth.login",
     resource: "session",
-    user: { name: "Tarun", email: "ops@packslip.example" },
+    user: { name: "Tarun", email: "ops@slipora.example" },
     ip: "192.168.1.42",
     createdAt: new Date(Date.now() - 1000 * 60 * 45).toISOString()
   },
@@ -286,7 +286,7 @@ export const sampleAuditLogs: AuditLog[] = [
     action: "slip.generate",
     resource: "slip",
     resourceId: "SLIP-2026-000001",
-    user: { name: "Tarun", email: "dispatch@packslip.example" },
+    user: { name: "Tarun", email: "dispatch@slipora.example" },
     ip: "192.168.1.44",
     metadata: { quantity: 100, quantityUnit: "NOS", printer: "Zebra ZD421" },
     createdAt: new Date(Date.now() - 1000 * 60 * 34).toISOString()
@@ -296,7 +296,7 @@ export const sampleAuditLogs: AuditLog[] = [
     action: "template.update",
     resource: "template",
     resourceId: "Industrial Bordered Slip",
-    user: { name: "Print Admin", email: "print@packslip.example" },
+    user: { name: "Print Admin", email: "print@slipora.example" },
     ip: "192.168.1.43",
     createdAt: new Date(Date.now() - 1000 * 60 * 22).toISOString()
   }

@@ -23,7 +23,7 @@ export function Sidebar() {
             </span>
             {!sidebarCollapsed && (
               <span className="min-w-0">
-                <span className="block truncate text-base font-black">PackSlip</span>
+                <span className="block truncate text-base font-black">Slipora</span>
                 <span className="block truncate text-xs text-muted-foreground">Simple slip printing</span>
               </span>
             )}

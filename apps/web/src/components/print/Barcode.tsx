@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-export function Barcode({ value = "PACKSLIP", height = 42 }: { value?: string; height?: number }) {
+export function Barcode({ value = "SLIPORA", height = 42 }: { value?: string; height?: number }) {
   const bars = useMemo(() => {
     const bits = Array.from(value).flatMap((char) => {
       const code = char.charCodeAt(0);

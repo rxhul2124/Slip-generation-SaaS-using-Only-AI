@@ -1,8 +1,8 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
-contextBridge.exposeInMainWorld("packslipDesktop", {
-  getPrinters: () => ipcRenderer.invoke("packslip:get-printers"),
-  getConfig: () => ipcRenderer.invoke("packslip:get-config"),
-  setConfig: (patch) => ipcRenderer.invoke("packslip:set-config", patch),
-  queueOfflineJob: (job) => ipcRenderer.invoke("packslip:queue-offline-job", job)
+contextBridge.exposeInMainWorld("sliporaDesktop", {
+  getPrinters: () => ipcRenderer.invoke("slipora:get-printers"),
+  getConfig: () => ipcRenderer.invoke("slipora:get-config"),
+  setConfig: (patch) => ipcRenderer.invoke("slipora:set-config", patch),
+  queueOfflineJob: (job) => ipcRenderer.invoke("slipora:queue-offline-job", job)
 });

@@ -6,11 +6,11 @@ async function bootstrap() {
   await connectDatabase();
   const app = createApp();
   const server = app.listen(env.port, () => {
-    console.log(`PackSlip API listening on ${env.port}`);
+    console.log(`Slipora API listening on ${env.port}`);
   });
 
   const shutdown = async (signal) => {
-    console.log(`${signal} received. Closing PackSlip API.`);
+    console.log(`${signal} received. Closing Slipora API.`);
     server.close(() => process.exit(0));
   };
 

@@ -140,7 +140,7 @@ export function PrintQueuePage() {
               label="Silent print mode"
             />
             <div className="rounded-lg border bg-muted/40 p-3 text-sm text-muted-foreground">
-              Desktop printer detection is exposed through Electron via `window.packslipDesktop.getPrinters()`.
+              Desktop printer detection is exposed through Electron via `window.sliporaDesktop.getPrinters()`.
             </div>
           
             {meta && (

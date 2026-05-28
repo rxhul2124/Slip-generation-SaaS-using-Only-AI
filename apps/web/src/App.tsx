@@ -29,10 +29,18 @@ const TemplateBuilderPage = lazy(() => import("@/features/templates/TemplateBuil
 const TemplatesPage = lazy(() => import("@/features/templates/TemplatesPage").then((module) => ({ default: module.TemplatesPage })));
 
 import { PageLoader } from "@/components/ui/PageLoader";
+import {
+  DashboardSkeleton,
+  TablePageSkeleton,
+  FormPageSkeleton,
+  CardsPageSkeleton,
+  BuilderSkeleton,
+  AuthSkeleton
+} from "@/components/ui/PageSkeletons";
 
-function screen(page: ReactNode) {
+function screen(page: ReactNode, fallback?: ReactNode) {
   return (
-    <Suspense fallback={<PageLoader />}>
+    <Suspense fallback={fallback || <PageLoader />}>
       {page}
     </Suspense>
   );
@@ -40,9 +48,9 @@ function screen(page: ReactNode) {
 
 const router = createBrowserRouter([
   { path: "/", element: screen(<LandingPage />) },
-  { path: "/login", element: screen(<LoginPage />) },
-  { path: "/register", element: screen(<RegisterPage />) },
-  { path: "/forgot-password", element: screen(<ForgotPasswordPage />) },
+  { path: "/login", element: screen(<LoginPage />, <AuthSkeleton />) },
+  { path: "/register", element: screen(<RegisterPage />, <AuthSkeleton />) },
+  { path: "/forgot-password", element: screen(<ForgotPasswordPage />, <AuthSkeleton />) },
   { path: "/product", element: screen(<MarketingPage page="product" />) },
   { path: "/features", element: screen(<MarketingPage page="features" />) },
   { path: "/templates-info", element: screen(<MarketingPage page="templates" />) },
@@ -61,25 +69,25 @@ const router = createBrowserRouter([
       {
         element: <AppShell />,
         children: [
-          { path: "/app", element: screen(<OverviewPage />) },
+          { path: "/app", element: screen(<OverviewPage />, <DashboardSkeleton />) },
           { path: "/onboarding", element: screen(<OnboardingPage />) },
           { path: "/products", element: <Navigate to="/customers" replace /> },
-          { path: "/customers", element: screen(<CustomersPage />) },
-          { path: "/templates", element: screen(<TemplatesPage />) },
-          { path: "/templates/builder", element: screen(<TemplateBuilderPage />) },
-          { path: "/presets", element: screen(<PresetsPage />) },
-          { path: "/generate", element: screen(<GenerateSlipPage />) },
-          { path: "/bulk", element: screen(<BulkGenerationPage />) },
-          { path: "/history", element: screen(<SlipHistoryPage />) },
-          { path: "/analytics", element: screen(<AnalyticsPage />) },
-          { path: "/audit-logs", element: screen(<AuditLogsPage />) },
-          { path: "/team", element: screen(<TeamPage />) },
-          { path: "/billing", element: screen(<BillingPage />) },
-          { path: "/settings", element: screen(<SettingsPage />) },
-          { path: "/search", element: screen(<SearchPage />) },
-          { path: "/print-queue", element: screen(<PrintQueuePage />) },
-          { path: "/backups", element: screen(<BackupsPage />) },
-          { path: "/activity", element: screen(<ActivityPage />) }
+          { path: "/customers", element: screen(<CustomersPage />, <TablePageSkeleton columns={5} />) },
+          { path: "/templates", element: screen(<TemplatesPage />, <TablePageSkeleton columns={5} />) },
+          { path: "/templates/builder", element: screen(<TemplateBuilderPage />, <BuilderSkeleton />) },
+          { path: "/presets", element: screen(<PresetsPage />, <CardsPageSkeleton />) },
+          { path: "/generate", element: screen(<GenerateSlipPage />, <FormPageSkeleton />) },
+          { path: "/bulk", element: screen(<BulkGenerationPage />, <FormPageSkeleton />) },
+          { path: "/history", element: screen(<SlipHistoryPage />, <TablePageSkeleton columns={7} />) },
+          { path: "/analytics", element: screen(<AnalyticsPage />, <DashboardSkeleton />) },
+          { path: "/audit-logs", element: screen(<AuditLogsPage />, <TablePageSkeleton columns={5} />) },
+          { path: "/team", element: screen(<TeamPage />, <TablePageSkeleton columns={4} />) },
+          { path: "/billing", element: screen(<BillingPage />, <CardsPageSkeleton />) },
+          { path: "/settings", element: screen(<SettingsPage />, <FormPageSkeleton />) },
+          { path: "/search", element: screen(<SearchPage />, <TablePageSkeleton columns={4} />) },
+          { path: "/print-queue", element: screen(<PrintQueuePage />, <TablePageSkeleton columns={5} />) },
+          { path: "/backups", element: screen(<BackupsPage />, <TablePageSkeleton columns={6} />) },
+          { path: "/activity", element: screen(<ActivityPage />, <TablePageSkeleton columns={3} />) }
         ]
       }
     ]

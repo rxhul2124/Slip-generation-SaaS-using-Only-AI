@@ -39,7 +39,7 @@ export const invite = asyncHandler(async (req, res) => {
   });
   await sendMail({
     to: req.validated.body.email,
-    subject: "You were invited to PackSlip",
+    subject: "You were invited to Slipora",
     text: `Invite token: ${token}`
   });
   await req.audit?.({ email: req.validated.body.email, role: req.validated.body.role }, inviteDoc._id.toString());

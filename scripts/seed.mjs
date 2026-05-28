@@ -12,8 +12,8 @@ import { defaultSlipTemplates } from "../apps/api/src/services/auth.service.js";
 await connectDatabase();
 
 await Promise.all([
-  User.deleteMany({ email: /packslip\.example$/ }),
-  Company.deleteMany({ slug: /^packslip-(industrial-demo|free-demo|pro-demo|enterprise-demo)/ })
+  User.deleteMany({ email: /slipora\.example$/ }),
+  Company.deleteMany({ slug: /^slipora-(industrial-demo|free-demo|pro-demo|enterprise-demo)/ })
 ]);
 
 async function createWorkspace({ name, email, companyName, slugPrefix, plan, withSampleData = false }) {
@@ -160,14 +160,14 @@ await GeneratedSlip.create({
 return { user, company };
 }
 
-await createWorkspace({ name: "Free Tier Owner", email: "free@packslip.example", companyName: "Free Tier Workspace", slugPrefix: "packslip-free-demo", plan: "free" });
-await createWorkspace({ name: "Pro Tier Owner", email: "pro@packslip.example", companyName: "Pro Tier Workspace", slugPrefix: "packslip-pro-demo", plan: "pro", withSampleData: true });
-await createWorkspace({ name: "Enterprise Owner", email: "enterprise@packslip.example", companyName: "Enterprise Workspace", slugPrefix: "packslip-enterprise-demo", plan: "enterprise" });
-await createWorkspace({ name: "Tanuj Operations", email: "ops@packslip.example", companyName: "Fast Tech Fastners", slugPrefix: "packslip-industrial-demo", plan: "pro", withSampleData: true });
+await createWorkspace({ name: "Free Tier Owner", email: "free@slipora.example", companyName: "Free Tier Workspace", slugPrefix: "slipora-free-demo", plan: "free" });
+await createWorkspace({ name: "Pro Tier Owner", email: "pro@slipora.example", companyName: "Pro Tier Workspace", slugPrefix: "slipora-pro-demo", plan: "pro", withSampleData: true });
+await createWorkspace({ name: "Enterprise Owner", email: "enterprise@slipora.example", companyName: "Enterprise Workspace", slugPrefix: "slipora-enterprise-demo", plan: "enterprise" });
+await createWorkspace({ name: "Tanuj Operations", email: "ops@slipora.example", companyName: "Fast Tech Fastners", slugPrefix: "slipora-industrial-demo", plan: "pro", withSampleData: true });
 
-console.log("PackSlip seed complete");
-console.log("Free: free@packslip.example / ChangeMe123!");
-console.log("Pro: pro@packslip.example / ChangeMe123!");
-console.log("Enterprise: enterprise@packslip.example / ChangeMe123!");
+console.log("Slipora seed complete");
+console.log("Free: free@slipora.example / ChangeMe123!");
+console.log("Pro: pro@slipora.example / ChangeMe123!");
+console.log("Enterprise: enterprise@slipora.example / ChangeMe123!");
 
 await mongoose.disconnect();

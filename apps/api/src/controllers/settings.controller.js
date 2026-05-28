@@ -19,7 +19,7 @@ export const updateSettings = asyncHandler(async (req, res) => {
 });
 
 export const uploadLogo = asyncHandler(async (req, res) => {
-  const asset = await uploadAsset(req.file, "packslip/logos");
+  const asset = await uploadAsset(req.file, "slipora/logos");
   const company = await Company.findByIdAndUpdate(
     req.companyId,
     { logo: asset, "onboarding.logoUploaded": true },

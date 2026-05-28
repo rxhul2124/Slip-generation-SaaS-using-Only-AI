@@ -1,11 +1,11 @@
 import type { SlipTemplate } from "./types";
 
-const savedTemplatesKey = "packslip.savedTemplates";
-const draftTemplateKey = "packslip.templateDraft";
+const savedTemplatesKey = "slipora.savedTemplates";
+const draftTemplateKey = "slipora.templateDraft";
 
 function currentScopeId() {
   try {
-    const raw = localStorage.getItem("packslip.auth");
+    const raw = localStorage.getItem("slipora.auth");
     const parsed = raw ? JSON.parse(raw) : null;
     const state = parsed?.state || parsed;
     return state?.company?.id || state?.company?._id || state?.user?.id || state?.user?._id || "anonymous";
@@ -59,7 +59,7 @@ export function saveLocalTemplate(template: SlipTemplate) {
   const next = [template, ...saved.filter((item) => item._id !== template._id)];
   localStorage.setItem(scopedKey(savedTemplatesKey), JSON.stringify(next));
   localStorage.setItem(scopedKey(draftTemplateKey), JSON.stringify(template));
-  window.dispatchEvent(new Event("packslip:templates-updated"));
+  window.dispatchEvent(new Event("slipora:templates-updated"));
   return next;
 }
 
@@ -77,6 +77,6 @@ export function deleteLocalTemplate(id: string) {
     }
   } catch {}
   
-  window.dispatchEvent(new Event("packslip:templates-updated"));
+  window.dispatchEvent(new Event("slipora:templates-updated"));
   return next;
 }

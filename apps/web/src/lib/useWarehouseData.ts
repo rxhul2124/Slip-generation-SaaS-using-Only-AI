@@ -3,7 +3,7 @@ import { resources, type ListParams } from "./api";
 import { sampleTemplates } from "./sampleData";
 import type { Customer, GeneratedSlip, Product } from "./types";
 
-const localSlipsKey = "packslip.localSlips";
+const localSlipsKey = "slipora.localSlips";
 
 function withFallback<T>(items: T[] | undefined, fallback: T[]) {
   return items?.length ? items : fallback;

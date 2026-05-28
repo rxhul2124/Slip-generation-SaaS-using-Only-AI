@@ -1,6 +1,9 @@
 import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
 
-dotenv.config();
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: path.resolve(__dirname, "../../../../.env") });
 
 const number = (value, fallback) => {
   const parsed = Number(value);
@@ -37,7 +40,7 @@ export const env = {
     port: number(process.env.SMTP_PORT, 587),
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
-    from: process.env.MAIL_FROM || "PackSlip <no-reply@packslip.local>"
+    from: process.env.MAIL_FROM || "Slipora <no-reply@slipora.local>"
   },
   cloudinary: {
     cloudName: process.env.CLOUDINARY_CLOUD_NAME,

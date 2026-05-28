@@ -17,7 +17,7 @@ async function ensureCsrfToken(headers: Headers) {
 }
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const token = localStorage.getItem("packslip.accessToken");
+  const token = localStorage.getItem("slipora.accessToken");
   const headers = new Headers(options.headers);
 
   if (!headers.has("Content-Type") && !(options.body instanceof FormData)) {
@@ -38,7 +38,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
-    throw new Error(body.message || "PackSlip request failed");
+    throw new Error(body.message || "Slipora request failed");
   }
 
   if (response.status === 204) return undefined as T;

@@ -213,11 +213,11 @@ export function GenerateSlipPage() {
     const refreshTemplates = () => setLocalTemplates(readLocalTemplates());
     window.addEventListener("focus", refreshTemplates);
     window.addEventListener("storage", refreshTemplates);
-    window.addEventListener("packslip:templates-updated", refreshTemplates);
+    window.addEventListener("slipora:templates-updated", refreshTemplates);
     return () => {
       window.removeEventListener("focus", refreshTemplates);
       window.removeEventListener("storage", refreshTemplates);
-      window.removeEventListener("packslip:templates-updated", refreshTemplates);
+      window.removeEventListener("slipora:templates-updated", refreshTemplates);
     };
   }, []);
 
@@ -325,7 +325,7 @@ export function GenerateSlipPage() {
   const createSlip = useMutation({
     mutationFn: async () => {
       if (!canCreateSlip) throw new Error("Add a product to this company before creating a slip.");
-      if (localStorage.getItem("packslip.accessToken") === "demo-local-session") {
+      if (localStorage.getItem("slipora.accessToken") === "demo-local-session") {
         const localSlip: GeneratedSlip = {
           ...draftSlip,
           _id: `local-slip-${Date.now()}`,

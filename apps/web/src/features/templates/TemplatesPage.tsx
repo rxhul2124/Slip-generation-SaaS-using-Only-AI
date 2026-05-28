@@ -71,10 +71,10 @@ export function TemplatesPage() {
   useEffect(() => {
     const refresh = () => setLocalTemplates(readLocalTemplates());
     window.addEventListener("focus", refresh);
-    window.addEventListener("packslip:templates-updated", refresh);
+    window.addEventListener("slipora:templates-updated", refresh);
     return () => {
       window.removeEventListener("focus", refresh);
-      window.removeEventListener("packslip:templates-updated", refresh);
+      window.removeEventListener("slipora:templates-updated", refresh);
     };
   }, []);
 

@@ -138,7 +138,7 @@ export async function register(payload, req) {
     }),
     sendMail({
       to: user.email,
-      subject: "Verify your PackSlip email",
+      subject: "Verify your Slipora email",
       text: `Verify your email with this token: ${verificationToken}`
     })
   ]);
@@ -216,7 +216,7 @@ export async function forgotPassword(email) {
 
   await sendMail({
     to: user.email,
-    subject: "Reset your PackSlip password",
+    subject: "Reset your Slipora password",
     text: `Reset token: ${token}`
   });
 }
