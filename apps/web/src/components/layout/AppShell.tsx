@@ -1,5 +1,5 @@
-import { Outlet } from "react-router-dom";
-import { motion } from "framer-motion";
+import { Outlet, useLocation } from "react-router-dom";
+import { AnimatePresence, motion } from "framer-motion";
 import { useEffect } from "react";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
@@ -8,6 +8,7 @@ import { useUiStore } from "@/stores/uiStore";
 
 export function AppShell() {
   const { sidebarCollapsed, darkMode, setSidebarCollapsed } = useUiStore();
+  const location = useLocation();
 
   useEffect(() => {
     if (window.matchMedia("(max-width: 767px)").matches) {
@@ -28,14 +29,18 @@ export function AppShell() {
       ) : null}
       <div className={cn("min-h-screen transition-all duration-300", sidebarCollapsed ? "md:pl-[74px]" : "md:pl-[272px]")}>
         <Topbar />
-        <motion.main
-          className="mx-auto w-full max-w-[1680px] px-3 py-4 sm:px-5 sm:py-6"
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.25 }}
-        >
-          <Outlet />
-        </motion.main>
+        <AnimatePresence mode="wait">
+          <motion.main
+            key={location.pathname}
+            className="mx-auto w-full max-w-[1680px] px-3 py-4 sm:px-5 sm:py-6"
+            initial={{ opacity: 0, y: 12, filter: "blur(4px)" }}
+            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+            exit={{ opacity: 0, y: -12, filter: "blur(4px)" }}
+            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <Outlet />
+          </motion.main>
+        </AnimatePresence>
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import { Building2, CalendarDays, Cloud, CreditCard, FileSignature, ImageIcon, Printer, Save, Upload } from "lucide-react";
+import { Building2, Cloud, CreditCard, FileSignature, ImageIcon, Printer, Save, Upload } from "lucide-react";
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -214,30 +214,6 @@ export function SettingsPage() {
 
       {section === "data" ? (
         <div className="grid gap-4 xl:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <div>
-                <CardTitle>Locale</CardTitle>
-                <CardDescription>Timezone, language, and date formatting.</CardDescription>
-              </div>
-              <CalendarDays className="h-5 w-5 text-primary" />
-            </CardHeader>
-            <CardContent className="grid gap-3 md:grid-cols-3">
-              <Select defaultValue="Asia/Calcutta">
-                <option value="Asia/Calcutta">Asia/Calcutta</option>
-                <option value="UTC">UTC</option>
-              </Select>
-              <Select defaultValue="en">
-                <option value="en">English</option>
-                <option value="hi">Hindi</option>
-              </Select>
-              <Select defaultValue="dd MMM yyyy">
-                <option value="dd MMM yyyy">dd MMM yyyy</option>
-                <option value="MM/dd/yyyy">MM/dd/yyyy</option>
-              </Select>
-            </CardContent>
-          </Card>
-
           <Card>
             <CardHeader>
               <div>

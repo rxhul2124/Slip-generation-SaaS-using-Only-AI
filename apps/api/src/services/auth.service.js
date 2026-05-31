@@ -251,6 +251,8 @@ export function serializeUser(user, company) {
     name: user.name,
     email: user.email,
     avatarUrl: user.avatarUrl,
+    locale: user.locale || "en",
+    timezone: user.timezone || "Asia/Calcutta",
     emailVerifiedAt: user.emailVerifiedAt,
     memberships: user.memberships,
     currentCompany: company

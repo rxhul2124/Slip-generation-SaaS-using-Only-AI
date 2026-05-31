@@ -22,4 +22,6 @@ authRouter.post("/forgot-password", authLimiter, validate(forgotPasswordSchema),
 authRouter.post("/reset-password", authLimiter, validate(resetPasswordSchema), controller.resetPassword);
 authRouter.post("/verify-email", validate(verifyEmailSchema), controller.verifyEmail);
 authRouter.get("/me", requireAuth, controller.me);
+authRouter.patch("/profile", requireAuth, controller.updateProfile);
+authRouter.post("/update-password", requireAuth, controller.updatePassword);
 authRouter.get("/csrf-token", csrfToken);

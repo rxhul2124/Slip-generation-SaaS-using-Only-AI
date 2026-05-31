@@ -96,8 +96,12 @@ export function useTemplates(params?: ListParams) {
   return useQuery({
     queryKey: ["templates", params],
     queryFn: async () => {
-      const response = await resources.templates.list(params);
-      return { data: withFallback(response.data, sampleTemplates), meta: response.meta };
+      try {
+        const response = await resources.templates.list(params);
+        return { data: withFallback(response.data, sampleTemplates), meta: response.meta };
+      } catch (err) {
+        return { data: sampleTemplates, meta: emptyMeta };
+      }
     },
     placeholderData: keepPreviousData,
     retry: false,

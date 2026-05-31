@@ -2,12 +2,14 @@ import { DndContext, DragEndEvent, useDraggable } from "@dnd-kit/core";
 import { restrictToParentElement } from "@dnd-kit/modifiers";
 import {
   Bold,
+  Camera,
   Copy,
   Grid3X3,
   ImageIcon,
   Lock,
   Maximize2,
   Minus,
+  Loader2,
   Plus,
   Redo2,
   RotateCw,
@@ -21,7 +23,7 @@ import {
   ZoomIn
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -139,10 +141,19 @@ function clampedElementPatch(template: SlipTemplate, patch: Partial<TemplateElem
 }
 
 function starterElements(width: number, height: number): TemplateElement[] {
-  const pad = Math.max(5, Math.round(width * 0.08));
+  const pad = Math.max(4, Math.min(8, Math.round(width * 0.06)));
   const full = width - pad * 2;
-  const row = Math.max(7, Math.round(height * 0.16));
-  const lowerY = Math.max(height - pad - row * 2, pad + row * 4);
+  const row = Math.min(12, Math.max(6, Math.round(height * 0.1)));
+  
+  const yCompany = pad;
+  const yProduct = yCompany + row + Math.max(2, Math.round(height * 0.02));
+  const yCustomer = yProduct + row + 2 + Math.max(2, Math.round(height * 0.02));
+  const ySerial = yCustomer + row + Math.max(2, Math.round(height * 0.02));
+  
+  const barcodeHeight = Math.min(24, Math.max(12, row * 1.8));
+  const yBarcode = Math.max(ySerial + row + 4, height - pad - barcodeHeight);
+  const qtyHeight = row;
+  const yQty = Math.max(ySerial + row + 4, height - pad - qtyHeight);
 
   return [
     {
@@ -151,7 +162,7 @@ function starterElements(width: number, height: number): TemplateElement[] {
       label: "Company",
       field: "companyName",
       x: pad,
-      y: pad,
+      y: yCompany,
       width: full,
       height: row,
       zIndex: 1,
@@ -163,7 +174,7 @@ function starterElements(width: number, height: number): TemplateElement[] {
       label: "Product",
       field: "product.name",
       x: pad,
-      y: pad + row + 3,
+      y: yProduct,
       width: full,
       height: row + 2,
       zIndex: 2,
@@ -175,7 +186,7 @@ function starterElements(width: number, height: number): TemplateElement[] {
       label: "Customer",
       field: "customer.name",
       x: pad,
-      y: pad + row * 2 + 8,
+      y: yCustomer,
       width: full,
       height: row,
       zIndex: 3,
@@ -187,7 +198,7 @@ function starterElements(width: number, height: number): TemplateElement[] {
       label: "Serial",
       field: "serialNumber",
       x: pad,
-      y: pad + row * 3 + 12,
+      y: ySerial,
       width: Math.round(full * 0.48),
       height: row,
       zIndex: 4,
@@ -199,9 +210,9 @@ function starterElements(width: number, height: number): TemplateElement[] {
       label: "Quantity",
       field: "quantity",
       x: pad,
-      y: lowerY,
+      y: yQty,
       width: Math.round(full * 0.34),
-      height: row,
+      height: qtyHeight,
       zIndex: 5,
       style: { fontSize: 10, fontWeight: 800, highlight: true, backgroundColor: "#dcfce7", borderColor: "#16a34a" }
     },
@@ -211,9 +222,9 @@ function starterElements(width: number, height: number): TemplateElement[] {
       label: "Barcode",
       field: "barcodeValue",
       x: pad + Math.round(full * 0.4),
-      y: lowerY,
+      y: yBarcode,
       width: Math.round(full * 0.6),
-      height: row * 2,
+      height: barcodeHeight,
       zIndex: 6
     }
   ];
@@ -264,7 +275,11 @@ function placeholderSlip(template: SlipTemplate): GeneratedSlip {
     status: "draft",
     printedCount: 0,
     exportedCount: 0,
-    createdAt: new Date("2026-01-01T00:00:00.000Z").toISOString()
+    createdAt: new Date("2026-01-01T00:00:00.000Z").toISOString(),
+    lineItems: [
+      { productName: "Sample Product A", sku: "SKU-A01", quantity: 2, unitPrice: 15.00, totalPrice: 30.00 },
+      { productName: "Sample Product B", sku: "SKU-B02", quantity: 1, unitPrice: 45.50, totalPrice: 45.50 }
+    ],
   };
 }
 
@@ -336,6 +351,7 @@ function DraggableElement({
 export function TemplateBuilderPage() {
   const [searchParams] = useSearchParams();
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const watermarkInputRef = useRef<HTMLInputElement>(null);
   const setSidebarCollapsed = useUiStore((state) => state.setSidebarCollapsed);
   const company = useAuthStore((state) => state.company);
@@ -356,7 +372,11 @@ export function TemplateBuilderPage() {
       return editableTemplate(sampleTemplate, {
         _id: `template-${crypto.randomUUID().slice(0, 8)}`,
         name: "New Design",
-        elements: starterElements(sampleTemplate.width, sampleTemplate.height)
+        width: 100,
+        height: 150,
+        format: "custom",
+        pageSize: "custom",
+        elements: starterElements(100, 150)
       });
     }
     return editableTemplate(requestedTemplate);
@@ -364,9 +384,13 @@ export function TemplateBuilderPage() {
   const [template, setTemplate] = useState<SlipTemplate>(initialTemplate);
   const [selectedId, setSelectedId] = useState<string | undefined>(template.elements[0]?.id);
   const [zoom, setZoom] = useState(1.15);
+  const navigate = useNavigate();
   const [printPage, setPrintPage] = useState<keyof typeof printPages>("a4");
   const [slipsPerRow, setSlipsPerRow] = useState(3);
+  const [slipsPerColumn, setSlipsPerColumn] = useState(4);
   const [referenceImage, setReferenceImage] = useState<{ src: string; name: string; opacity: number } | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
   const notify = useNotificationStore((state) => state.push);
   const selected = useMemo(() => template.elements.find((element) => element.id === selectedId), [template, selectedId]);
   const livePreviewSlip = useMemo(() => placeholderSlip(template), [template]);
@@ -376,6 +400,7 @@ export function TemplateBuilderPage() {
   const printGap = 3;
   const printMargin = 6;
   const fittedSlipWidth = Math.max(20, (selectedPrintPage.width - printMargin * 2 - printGap * (slipsPerRow - 1)) / slipsPerRow);
+  const fittedSlipHeight = Math.max(12, (selectedPrintPage.height - printMargin * 2 - printGap * (slipsPerColumn - 1)) / slipsPerColumn);
 
   useEffect(() => {
     setSidebarCollapsed(true);
@@ -411,6 +436,7 @@ export function TemplateBuilderPage() {
     if (localStorage.getItem("slipora.accessToken") === "demo-local-session") {
       saveLocalTemplate(template);
       notify({ tone: "success", title: "Template saved", body: `${template.name} was saved locally for this demo session.` });
+      navigate("/templates");
       return;
     }
 
@@ -421,6 +447,7 @@ export function TemplateBuilderPage() {
       setTemplate(editableTemplate(savedTemplate));
       saveLocalTemplate(savedTemplate);
       notify({ tone: "success", title: "Template saved", body: `${savedTemplate.name} was saved to your workspace.` });
+      navigate("/templates");
     } catch (error) {
       notify({ tone: "error", title: "Save failed", body: error instanceof Error ? error.message : "The API save failed." });
     }
@@ -540,18 +567,21 @@ export function TemplateBuilderPage() {
     updateSelectedStyle({ fontSize: clamp(current + delta, 6, 32) });
   };
 
-  const applyPrintPageFit = () => {
-    const ratio = template.height / template.width || 0.62;
-    const nextWidth = Number(fittedSlipWidth.toFixed(1));
-    const nextHeight = Number(Math.max(12, nextWidth * ratio).toFixed(1));
+  const applyPrintPageFitWithValues = (newPage: keyof typeof printPages, newSlipsPerRow: number, newSlipsPerColumn: number) => {
+    const selectedPage = printPages[newPage];
+    const newFittedSlipWidth = Math.max(20, (selectedPage.width - printMargin * 2 - printGap * (newSlipsPerRow - 1)) / newSlipsPerRow);
+    const newFittedSlipHeight = Math.max(12, (selectedPage.height - printMargin * 2 - printGap * (newSlipsPerColumn - 1)) / newSlipsPerColumn);
+
+    const nextWidth = Number(newFittedSlipWidth.toFixed(1));
+    const nextHeight = Number(newFittedSlipHeight.toFixed(1));
     const scaleX = nextWidth / template.width;
     const scaleY = nextHeight / template.height;
     setTemplate((current) => ({
       ...current,
       width: nextWidth,
       height: nextHeight,
-      format: printPage === "letter" ? "letter" : printPage === "a4" ? "a4" : "custom",
-      pageSize: printPage === "letter" ? "letter" : printPage === "a4" ? "a4" : "custom",
+      format: newPage === "letter" ? "letter" : newPage === "a4" ? "a4" : "custom",
+      pageSize: newPage === "letter" ? "letter" : newPage === "a4" ? "a4" : "custom",
       orientation: nextWidth > nextHeight ? "landscape" : "portrait",
       elements: current.elements.map((element) => ({
         ...element,
@@ -563,102 +593,34 @@ export function TemplateBuilderPage() {
     }));
   };
 
-  const createTemplateFromImage = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const src = String(reader.result || "");
-      const image = new Image();
-      image.onload = () => {
-        const pad = Math.max(6, Math.round(template.width * 0.06));
-        const full = template.width - pad * 2;
-        const fieldHeight = Math.max(7, Math.round(template.height * 0.07));
-        const lowerY = Math.max(template.height - pad - fieldHeight * 2, pad + fieldHeight * 4);
-        const suggestions: TemplateElement[] = [
-          {
-            id: `company-${crypto.randomUUID().slice(0, 6)}`,
-            type: "field",
-            label: "Company",
-            field: "companyName",
-            x: pad,
-            y: pad,
-            width: full,
-            height: fieldHeight,
-            zIndex: 1,
-            style: { fontSize: 11, fontWeight: 800, highlight: true, backgroundColor: "#fef3c7", borderColor: "#f59e0b" }
-          },
-          {
-            id: `serial-${crypto.randomUUID().slice(0, 6)}`,
-            type: "field",
-            label: "Serial",
-            field: "serialNumber",
-            x: pad,
-            y: pad + fieldHeight + 3,
-            width: Math.round(full * 0.48),
-            height: fieldHeight,
-            zIndex: 2,
-            style: { fontSize: 9, fontWeight: 700 }
-          },
-          {
-            id: `date-${crypto.randomUUID().slice(0, 6)}`,
-            type: "field",
-            label: "Date",
-            field: "generatedDate",
-            x: pad + Math.round(full * 0.56),
-            y: pad + fieldHeight + 3,
-            width: Math.round(full * 0.44),
-            height: fieldHeight,
-            zIndex: 3,
-            style: { fontSize: 9, fontWeight: 700 }
-          },
-          {
-            id: `product-${crypto.randomUUID().slice(0, 6)}`,
-            type: "field",
-            label: "Product",
-            field: "product.name",
-            x: pad,
-            y: pad + fieldHeight * 2 + 8,
-            width: full,
-            height: fieldHeight + 2,
-            zIndex: 4,
-            style: { fontSize: 12, fontWeight: 800, highlight: true, backgroundColor: "#dbeafe", borderColor: "#2563eb" }
-          },
-          {
-            id: `customer-${crypto.randomUUID().slice(0, 6)}`,
-            type: "field",
-            label: "Customer",
-            field: "customer.name",
-            x: pad,
-            y: pad + fieldHeight * 3 + 14,
-            width: full,
-            height: fieldHeight,
-            zIndex: 5,
-            style: { fontSize: 9, fontWeight: 700 }
-          },
-          {
-            id: `qty-${crypto.randomUUID().slice(0, 6)}`,
-            type: "field",
-            label: "Quantity",
-            field: "quantity",
-            x: pad,
-            y: lowerY,
-            width: Math.round(full * 0.32),
-            height: fieldHeight,
-            zIndex: 6,
-            style: { fontSize: 10, fontWeight: 800, highlight: true, backgroundColor: "#dcfce7", borderColor: "#16a34a" }
-          },
-          {
-            id: `barcode-${crypto.randomUUID().slice(0, 6)}`,
-            type: "barcode",
-            label: "Barcode",
-            field: "barcodeValue",
-            x: pad + Math.round(full * 0.38),
-            y: lowerY,
-            width: Math.round(full * 0.62),
-            height: fieldHeight * 2 + 3,
-            zIndex: 7
-          }
-        ];
+  const applyPrintPageFit = () => {
+    applyPrintPageFitWithValues(printPage, slipsPerRow, slipsPerColumn);
+  };
 
+
+  const createTemplateFromImage = async (file: File) => {
+    try {
+      setIsAnalyzing(true);
+      const formData = new FormData();
+      formData.append("image", file);
+      
+      const response = await resources.templates.analyzeImage(formData);
+      const suggestions: TemplateElement[] = response.data.elements.map((el: any, i: number) => ({
+        id: `${el.type}-${crypto.randomUUID().slice(0, 6)}`,
+        type: el.type,
+        label: el.label,
+        field: el.field,
+        x: Number(el.x) || 10,
+        y: Number(el.y) || 10,
+        width: Number(el.width) || 40,
+        height: Number(el.height) || 10,
+        zIndex: i + 1,
+        style: el.type === "field" ? { fontSize: 10, fontWeight: 700, highlight: true, backgroundColor: "#fef3c7", borderColor: "#f59e0b" } : undefined
+      }));
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        const src = String(reader.result || "");
         setReferenceImage({ src, name: file.name, opacity: 0.28 });
         setTemplate((current) => ({
           ...current,
@@ -669,13 +631,16 @@ export function TemplateBuilderPage() {
         setSelectedId(suggestions[0]?.id);
         notify({
           tone: "success",
-          title: "Template drafted from image",
-          body: "The image is fitted as a reference over the current paper size; edit or resize the generated fields."
+          title: "Template mapped from image",
+          body: "Gemini successfully extracted the layout elements. Adjust as needed."
         });
       };
-      image.src = src;
-    };
-    reader.readAsDataURL(file);
+      reader.readAsDataURL(file);
+    } catch (error) {
+      notify({ tone: "error", title: "Analysis failed", body: error instanceof Error ? error.message : "Failed to analyze image with AI" });
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   const uploadWatermarkLogo = (file: File) => {
@@ -692,6 +657,26 @@ export function TemplateBuilderPage() {
       <PageHeader
         eyebrow="Templates"
         title={searchParams.get("template") ? "Edit slip design" : "New slip design"}
+        center={
+          <div className="flex bg-muted/40 p-1 rounded-lg border w-max">
+            <Button
+              variant={template.layoutMode === "blocks" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setTemplate({ ...template, layoutMode: "blocks" })}
+              className="rounded-md h-8 px-3 text-xs"
+            >
+              Structured Document
+            </Button>
+            <Button
+              variant={template.layoutMode !== "blocks" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setTemplate({ ...template, layoutMode: "freeform" })}
+              className="rounded-md h-8 px-3 text-xs"
+            >
+              Freeform Canvas
+            </Button>
+          </div>
+        }
         actions={
           <>
             <Button variant="outline" onClick={() => notify({ tone: "info", title: "Undo", body: "Undo history starts after the next saved edit checkpoint." })}>
@@ -714,40 +699,88 @@ export function TemplateBuilderPage() {
           <Card className="self-start">
             <CardHeader className="gap-1 p-4 pb-2">
               <div>
-                <CardTitle>Elements</CardTitle>
+                <CardTitle>{template.layoutMode === "blocks" ? "Document Settings" : "Elements"}</CardTitle>
               </div>
-              {referenceImage ? (
+              {referenceImage && template.layoutMode !== "blocks" ? (
                 <Badge variant="muted" className="w-fit">
                   <Wand2 className="mr-1 h-3 w-3" /> Image reference
                 </Badge>
               ) : null}
             </CardHeader>
             <CardContent className="space-y-3 p-4 pt-0">
-              <input
-                ref={imageInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(event) => {
-                  const file = event.target.files?.[0];
-                  if (file) createTemplateFromImage(file);
-                  event.currentTarget.value = "";
-                }}
-              />
-              <input
-                ref={watermarkInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(event) => {
-                  const file = event.target.files?.[0];
-                  if (file) uploadWatermarkLogo(file);
-                  event.currentTarget.value = "";
-                }}
-              />
+              {template.layoutMode === "blocks" ? (
+                <div className="space-y-6">
+                  {/* Header Settings */}
+                  <div className="space-y-3">
+                    <div className="font-bold text-sm border-b pb-1">Header Section</div>
+                    <label className="block space-y-1 text-xs font-semibold uppercase text-muted-foreground">
+                      Alignment
+                      <Select 
+                        value={template.blocks?.header?.align || "left"} 
+                        onChange={(e) => setTemplate(curr => ({ ...curr, blocks: { ...curr.blocks, header: { ...(curr.blocks?.header || {showLogo:true,showDate:true,showSlipId:true,showInvoiceId:true,align:"left"}), align: e.target.value as any } } }))}
+                      >
+                        <option value="left">Left Aligned</option>
+                        <option value="center">Centered</option>
+                        <option value="right">Right Aligned</option>
+                      </Select>
+                    </label>
+                    <Switch checked={template.blocks?.header?.showLogo ?? true} onCheckedChange={(v) => setTemplate(curr => ({ ...curr, blocks: { ...curr.blocks, header: { ...(curr.blocks?.header || {showLogo:true,showDate:true,showSlipId:true,showInvoiceId:true,align:"left"}), showLogo: v } } }))} label="Show Logo" />
+                    <Switch checked={template.blocks?.header?.showDate ?? true} onCheckedChange={(v) => setTemplate(curr => ({ ...curr, blocks: { ...curr.blocks, header: { ...(curr.blocks?.header || {showLogo:true,showDate:true,showSlipId:true,showInvoiceId:true,align:"left"}), showDate: v } } }))} label="Show Date" />
+                    <Switch checked={template.blocks?.header?.showSlipId ?? true} onCheckedChange={(v) => setTemplate(curr => ({ ...curr, blocks: { ...curr.blocks, header: { ...(curr.blocks?.header || {showLogo:true,showDate:true,showSlipId:true,showInvoiceId:true,align:"left"}), showSlipId: v } } }))} label="Show Slip ID" />
+                    <Switch checked={template.blocks?.header?.showInvoiceId ?? true} onCheckedChange={(v) => setTemplate(curr => ({ ...curr, blocks: { ...curr.blocks, header: { ...(curr.blocks?.header || {showLogo:true,showDate:true,showSlipId:true,showInvoiceId:true,align:"left"}), showInvoiceId: v } } }))} label="Show Invoice ID" />
+                  </div>
+
+                  {/* Customer Settings */}
+                  <div className="space-y-3">
+                    <div className="font-bold text-sm border-b pb-1">Customer Details</div>
+                    <Switch checked={template.blocks?.customer?.showAddress ?? true} onCheckedChange={(v) => setTemplate(curr => ({ ...curr, blocks: { ...curr.blocks, customer: { ...(curr.blocks?.customer || {showPhone:true,showEmail:true,showAddress:true,showContactPerson:true}), showAddress: v } } }))} label="Show Address" />
+                    <Switch checked={template.blocks?.customer?.showContactPerson ?? true} onCheckedChange={(v) => setTemplate(curr => ({ ...curr, blocks: { ...curr.blocks, customer: { ...(curr.blocks?.customer || {showPhone:true,showEmail:true,showAddress:true,showContactPerson:true}), showContactPerson: v } } }))} label="Show Contact Person" />
+                    <Switch checked={template.blocks?.customer?.showPhone ?? true} onCheckedChange={(v) => setTemplate(curr => ({ ...curr, blocks: { ...curr.blocks, customer: { ...(curr.blocks?.customer || {showPhone:true,showEmail:true,showAddress:true,showContactPerson:true}), showPhone: v } } }))} label="Show Phone" />
+                    <Switch checked={template.blocks?.customer?.showEmail ?? true} onCheckedChange={(v) => setTemplate(curr => ({ ...curr, blocks: { ...curr.blocks, customer: { ...(curr.blocks?.customer || {showPhone:true,showEmail:true,showAddress:true,showContactPerson:true}), showEmail: v } } }))} label="Show Email" />
+                  </div>
+
+                  {/* Table Settings */}
+                  <div className="space-y-3">
+                    <div className="font-bold text-sm border-b pb-1">Line Items Table</div>
+                    {(["index", "product", "sku", "qty", "price", "total"] as const).map(col => {
+                      const columns = template.blocks?.table?.columns || ["index", "product", "sku", "qty", "price", "total"];
+                      return (
+                        <Switch 
+                          key={col} 
+                          checked={columns.includes(col)} 
+                          onCheckedChange={(v) => {
+                            const newCols = v ? [...columns, col] : columns.filter(c => c !== col);
+                            setTemplate(curr => ({ ...curr, blocks: { ...curr.blocks, table: { columns: newCols as any } } }));
+                          }} 
+                          label={`Show ${col.toUpperCase()} column`} 
+                        />
+                      );
+                    })}
+                  </div>
+
+                  {/* Footer Settings */}
+                  <div className="space-y-3">
+                    <div className="font-bold text-sm border-b pb-1">Footer Section</div>
+                    <Switch checked={template.blocks?.footer?.showNotes ?? true} onCheckedChange={(v) => setTemplate(curr => ({ ...curr, blocks: { ...curr.blocks, footer: { ...(curr.blocks?.footer || {showNotes:true,showTotals:true,showSignatures:true}), showNotes: v } } }))} label="Show Notes" />
+                    <Switch checked={template.blocks?.footer?.showSignatures ?? true} onCheckedChange={(v) => setTemplate(curr => ({ ...curr, blocks: { ...curr.blocks, footer: { ...(curr.blocks?.footer || {showNotes:true,showTotals:true,showSignatures:true}), showSignatures: v } } }))} label="Show Signatures" />
+                  </div>
+                </div>
+              ) : (
+              <>
               <div className="grid grid-cols-2 gap-2">
-                <Button variant="outline" size="sm" className="col-span-2 justify-start" disabled={!canImportLogo} onClick={() => imageInputRef.current?.click()}>
-                  <ImageIcon className="h-4 w-4" /> Import slip image {!canImportLogo ? <UpgradeBadge label="Pro" /> : null}
+                <Button variant="outline" size="sm" className="justify-start truncate" disabled={!canImportLogo || isAnalyzing} onClick={() => imageInputRef.current?.click()}>
+                  {isAnalyzing ? <Loader2 className="h-4 w-4 animate-spin shrink-0" /> : <ImageIcon className="h-4 w-4 shrink-0" />}
+                  <span className="truncate">{isAnalyzing ? "..." : "Import"}</span> {!canImportLogo ? <UpgradeBadge label="Pro" /> : null}
+                </Button>
+                <Button variant="outline" size="sm" className="justify-start truncate" disabled={!canImportLogo || isAnalyzing} onClick={() => {
+                  if (navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === "function") {
+                    setIsCameraOpen(true);
+                  } else {
+                    cameraInputRef.current?.click();
+                  }
+                }}>
+                  {isAnalyzing ? <Loader2 className="h-4 w-4 animate-spin shrink-0" /> : <Camera className="h-4 w-4 shrink-0" />}
+                  <span className="truncate">{isAnalyzing ? "..." : "Camera"}</span> {!canImportLogo ? <UpgradeBadge label="Pro" /> : null}
                 </Button>
                 {palette.map((item) => (
                   <Button key={`${item.type}-${item.label}`} variant="outline" size="sm" className="justify-start" onClick={() => addElement(item)}>
@@ -937,6 +970,8 @@ export function TemplateBuilderPage() {
                   Select or import a field to edit it.
                 </div>
               )}
+              </>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -987,8 +1022,8 @@ export function TemplateBuilderPage() {
                 <Upload className="h-4 w-4" /> Upload watermark logo
               </Button>
               {watermarkImage ? (
-                <div className="grid h-16 place-items-center rounded-md border bg-white p-2">
-                  <img src={watermarkImage} alt="" className="max-h-full max-w-full object-contain" />
+                <div className="relative flex h-16 items-center justify-center overflow-hidden rounded-md border bg-white p-2">
+                  <img src={watermarkImage} alt="" className="h-full w-full object-contain" />
                 </div>
               ) : null}
               <label className="block space-y-1 text-sm">
@@ -1023,10 +1058,14 @@ export function TemplateBuilderPage() {
 
             <div className="space-y-3 border-t pt-3">
               <div className="text-sm font-bold">Print page fit</div>
-              <div className="grid grid-cols-2 gap-2">
-                <label className="space-y-1 text-xs font-semibold uppercase text-muted-foreground">
+              <div className="flex items-end gap-2">
+                <label className="flex-1 space-y-1 text-xs font-semibold uppercase text-muted-foreground">
                   Page
-                  <Select value={printPage} onChange={(event) => setPrintPage(event.target.value as keyof typeof printPages)}>
+                  <Select value={printPage} onChange={(event) => {
+                    const val = event.target.value as keyof typeof printPages;
+                    setPrintPage(val);
+                    applyPrintPageFitWithValues(val, slipsPerRow, slipsPerColumn);
+                  }}>
                     {Object.entries(printPages).map(([key, page]) => (
                       <option key={key} value={key}>
                         {page.label}
@@ -1034,9 +1073,13 @@ export function TemplateBuilderPage() {
                     ))}
                   </Select>
                 </label>
-                <label className="space-y-1 text-xs font-semibold uppercase text-muted-foreground">
+                <label className="flex-1 space-y-1 text-xs font-semibold uppercase text-muted-foreground">
                   Per row
-                  <Select value={String(slipsPerRow)} onChange={(event) => setSlipsPerRow(Number(event.target.value))}>
+                  <Select value={String(slipsPerRow)} onChange={(event) => {
+                    const val = Number(event.target.value);
+                    setSlipsPerRow(val);
+                    applyPrintPageFitWithValues(printPage, val, slipsPerColumn);
+                  }}>
                     {[1, 2, 3, 4, 5].map((count) => (
                       <option key={count} value={count}>
                         {count} slips
@@ -1044,24 +1087,47 @@ export function TemplateBuilderPage() {
                     ))}
                   </Select>
                 </label>
+                <label className="flex-1 space-y-1 text-xs font-semibold uppercase text-muted-foreground">
+                  Per col
+                  <Select value={String(slipsPerColumn)} onChange={(event) => {
+                    const val = Number(event.target.value);
+                    setSlipsPerColumn(val);
+                    applyPrintPageFitWithValues(printPage, slipsPerRow, val);
+                  }}>
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((count) => (
+                      <option key={count} value={count}>
+                        {count} slips
+                      </option>
+                    ))}
+                  </Select>
+                </label>
+                <Button type="button" variant="outline" size="sm" className="h-9 whitespace-nowrap px-3" onClick={applyPrintPageFit}>
+                  Apply
+                </Button>
               </div>
               <div className="overflow-hidden rounded-md border bg-white p-2">
-                <div className="flex gap-1" style={{ aspectRatio: `${selectedPrintPage.width} / ${Math.min(selectedPrintPage.height, 90)}` }}>
-                  {Array.from({ length: slipsPerRow }).map((_, index) => (
-                    <div key={index} className="grid flex-1 place-items-center border border-dashed border-primary/70 bg-primary/10 text-[10px] font-black text-primary">
-                      {Math.round(fittedSlipWidth)}mm
+                <div 
+                  className="grid gap-1 mx-auto" 
+                  style={{ 
+                    gridTemplateColumns: `repeat(${slipsPerRow}, minmax(0, 1fr))`,
+                    gridTemplateRows: `repeat(${slipsPerColumn}, minmax(0, 1fr))`,
+                    aspectRatio: `${selectedPrintPage.width} / ${selectedPrintPage.height}`,
+                    maxHeight: "140px"
+                  }}
+                >
+                  {Array.from({ length: slipsPerRow * slipsPerColumn }).map((_, index) => (
+                    <div key={index} className="grid place-items-center border border-dashed border-primary/70 bg-primary/10 text-[8px] font-black text-primary p-0.5 text-center leading-none">
+                      {Math.round(fittedSlipWidth)}x{Math.round(fittedSlipHeight)}
                     </div>
                   ))}
                 </div>
               </div>
-              <Button type="button" variant="outline" size="sm" className="w-full" onClick={applyPrintPageFit}>
-                Apply {slipsPerRow} per row ({fittedSlipWidth.toFixed(1)}mm wide)
-              </Button>
             </div>
           </CardContent>
         </Card>
 
         <div className="grid min-w-0 gap-3 xl:col-start-2 xl:row-start-1">
+          {template.layoutMode !== "blocks" && (
           <Card className="min-w-0 self-start">
             <CardHeader>
               <div>
@@ -1130,6 +1196,7 @@ export function TemplateBuilderPage() {
               </div>
             </CardContent>
           </Card>
+          )}
 
           <Card className="min-w-0 self-start">
             <CardHeader>
@@ -1141,13 +1208,126 @@ export function TemplateBuilderPage() {
             <CardContent>
               <div className="overflow-auto rounded-lg border bg-muted/30 p-4">
                 <div className="flex min-w-max justify-center">
-                  <SlipRenderer slip={livePreviewSlip} scale={1.25} />
+                  <SlipRenderer slip={livePreviewSlip} scale={template.layoutMode === "blocks" ? zoom : 1.25} />
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
       </div>
+      <input
+        ref={imageInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          if (file) createTemplateFromImage(file);
+          event.currentTarget.value = "";
+        }}
+      />
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          if (file) createTemplateFromImage(file);
+          event.currentTarget.value = "";
+        }}
+      />
+      <input
+        ref={watermarkInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          if (file) uploadWatermarkLogo(file);
+          event.currentTarget.value = "";
+        }}
+      />
+      <CameraModal isOpen={isCameraOpen} onClose={() => setIsCameraOpen(false)} onCapture={(file) => createTemplateFromImage(file)} />
     </>
+  );
+}
+
+function CameraModal({ isOpen, onClose, onCapture }: { isOpen: boolean; onClose: () => void; onCapture: (file: File) => void }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const notify = useNotificationStore((state) => state.push);
+
+  useEffect(() => {
+    if (isOpen) {
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+        .then(stream => {
+          streamRef.current = stream;
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+            videoRef.current.play();
+          }
+        })
+        .catch(err => {
+          console.error("Camera access denied or unavailable", err);
+          notify({
+            tone: "error",
+            title: "Camera access failed",
+            body: "Could not access the camera. Please check camera permissions, verify that no other app is using it, and ensure you are on a secure (localhost/HTTPS) connection."
+          });
+          onClose();
+        });
+    } else {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+    }
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
+
+  const capturePhoto = () => {
+    if (videoRef.current) {
+      const canvas = document.createElement("canvas");
+      canvas.width = videoRef.current.videoWidth;
+      canvas.height = videoRef.current.videoHeight;
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.drawImage(videoRef.current, 0, 0);
+        canvas.toBlob(blob => {
+          if (blob) {
+            const file = new File([blob], "camera-capture.jpg", { type: "image/jpeg" });
+            onCapture(file);
+            onClose();
+          }
+        }, "image/jpeg", 0.9);
+      }
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+      <div className="w-full max-w-2xl bg-background rounded-lg shadow-lg overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200">
+        <div className="p-4 border-b flex justify-between items-center bg-muted/30">
+          <h2 className="text-lg font-bold">Capture Slip</h2>
+          <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
+        </div>
+        <div className="relative bg-black flex-1 min-h-[50vh] md:min-h-[60vh]">
+          <video ref={videoRef} className="absolute inset-0 w-full h-full object-contain" playsInline />
+        </div>
+        <div className="p-4 border-t flex justify-center bg-muted/30">
+          <Button onClick={capturePhoto} className="w-full max-w-sm h-12 text-md">
+            <Camera className="mr-2 h-5 w-5" /> Take Photo
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 }

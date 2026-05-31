@@ -51,6 +51,7 @@ export function TemplatesPage() {
     onSuccess: (id) => {
       // Remove from local storage if it's there
       deleteLocalTemplate(id);
+      setLocalTemplates(readLocalTemplates());
       queryClient.invalidateQueries({ queryKey: ["templates"] });
       notify({ tone: "success", title: "Template deleted", body: "The template has been removed." });
     },
@@ -61,9 +62,9 @@ export function TemplatesPage() {
   const plan = useAuthStore((state) => state.company?.plan);
   const [localTemplates, setLocalTemplates] = useState(() => readLocalTemplates());
   const templateOptions = useMemo(() => {
-    const baseTemplates = templates.length ? templates : sampleTemplates;
+    const baseTemplates = isLoading ? [] : (templates.length ? templates : sampleTemplates);
     return [...localTemplates, ...baseTemplates.filter((template) => !localTemplates.some((local) => local._id === template._id))];
-  }, [localTemplates, templates]);
+  }, [localTemplates, templates, isLoading]);
   const customTemplateCount = templateOptions.filter((template) => !["Small Template", "Medium Template"].includes(template.name)).length;
   const customTemplateLimit = limitsFor(plan).customTemplates;
   const customTemplateLocked = customTemplateLimit !== Infinity && customTemplateCount >= customTemplateLimit;
@@ -107,87 +108,93 @@ export function TemplatesPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <thead>
-              <tr>
-                <Th>Name</Th>
-                <Th>Format</Th>
-                <Th>Size</Th>
-                <Th>Mode</Th>
-                <Th>Elements</Th>
-                <Th></Th>
-              </tr>
-            </thead>
-            <tbody>
-              {templateOptions.map((template) => (
-                <tr key={template._id}>
-                  <Td>
-                    <span className="flex items-center gap-2 font-semibold">
-                      <LayoutTemplate className="h-4 w-4 text-primary" /> {template.name}
-                    </span>
-                  </Td>
-                  <Td>{template.format}</Td>
-                  <Td>
-                    {template.width} x {template.height} {template.units}
-                  </Td>
-                  <Td>{template.thermalMode ? <Badge variant="success">Thermal</Badge> : <Badge variant="muted">Sheet</Badge>}</Td>
-                  <Td>{template.elements.length}</Td>
-                  <Td className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button asChild variant="outline" size="sm">
-                        <Link to={`/templates/builder?template=${template._id}`}>
-                          <Pencil className="h-4 w-4" /> Edit
-                        </Link>
-                      </Button>
-                      <Button asChild variant="outline" size="sm">
-                        <Link to={`/templates/builder?template=${template._id}&duplicate=1`}>
-                          <Copy className="h-4 w-4" /> Duplicate
-                        </Link>
-                      </Button>
-                      {!["Small Template", "Medium Template"].includes(template.name) && (
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="destructive" size="sm" disabled={deleteMutation.isPending}>
-                              <Trash2 className="h-4 w-4" /> Delete
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This will permanently delete the template "{template.name}". This action cannot be undone.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction
-                                className={buttonVariants({ variant: "destructive" })}
-                                onClick={() => deleteMutation.mutate(template._id)}
-                              >
-                                Delete
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      )}
-                    </div>
-                  </Td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-        
-            {meta && (
-              <Pagination
-                page={meta.page}
-                pages={meta.pages}
-                limit={meta.limit}
-                total={meta.total}
-                onPageChange={setPage}
-                onLimitChange={setLimit}
-              />
-            )}
-          </CardContent>
+          {isLoading ? (
+            <TableSkeleton columns={6} rows={3} />
+          ) : (
+            <>
+              <Table>
+                <thead>
+                  <tr>
+                    <Th>Name</Th>
+                    <Th>Format</Th>
+                    <Th>Size</Th>
+                    <Th>Mode</Th>
+                    <Th>Elements</Th>
+                    <Th></Th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {templateOptions.map((template) => (
+                    <tr key={template._id}>
+                      <Td>
+                        <span className="flex items-center gap-2 font-semibold">
+                          <LayoutTemplate className="h-4 w-4 text-primary" /> {template.name}
+                        </span>
+                      </Td>
+                      <Td>{template.format}</Td>
+                      <Td>
+                        {template.width} x {template.height} {template.units}
+                      </Td>
+                      <Td>{template.thermalMode ? <Badge variant="success">Thermal</Badge> : <Badge variant="muted">Sheet</Badge>}</Td>
+                      <Td>{template.elements.length}</Td>
+                      <Td className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button asChild variant="outline" size="sm">
+                            <Link to={`/templates/builder?template=${template._id}`}>
+                              <Pencil className="h-4 w-4" /> Edit
+                            </Link>
+                          </Button>
+                          <Button asChild variant="outline" size="sm">
+                            <Link to={`/templates/builder?template=${template._id}&duplicate=1`}>
+                              <Copy className="h-4 w-4" /> Duplicate
+                            </Link>
+                          </Button>
+                          {!["Small Template", "Medium Template"].includes(template.name) && (
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="destructive" size="sm" disabled={deleteMutation.isPending}>
+                                  <Trash2 className="h-4 w-4" /> Delete
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    This will permanently delete the template "{template.name}". This action cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    className={buttonVariants({ variant: "destructive" })}
+                                    onClick={() => deleteMutation.mutate(template._id)}
+                                  >
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          )}
+                        </div>
+                      </Td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+
+              {meta && (
+                <Pagination
+                  page={meta.page}
+                  pages={meta.pages}
+                  limit={meta.limit}
+                  total={meta.total}
+                  onPageChange={setPage}
+                  onLimitChange={setLimit}
+                />
+              )}
+            </>
+          )}
+        </CardContent>
       </Card>
     </>
   );

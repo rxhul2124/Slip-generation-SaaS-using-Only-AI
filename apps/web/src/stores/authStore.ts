@@ -2,10 +2,13 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { api } from "@/lib/api";
 
-interface AuthUser {
+export interface AuthUser {
   id: string;
   name: string;
   email: string;
+  locale?: string;
+  timezone?: string;
+  avatarUrl?: string;
   signatureProfile?: {
     fullName?: string;
     role?: string;
@@ -31,9 +34,10 @@ interface AuthState {
   register: (payload: { name: string; email: string; password: string; companyName: string }) => Promise<void>;
   logout: () => Promise<void>;
   setSession: (payload: { user: AuthUser; company: Company; accessToken: string }) => void;
+  updateUser: (partial: Partial<AuthUser>) => void;
 }
 
-const demoSessions: Record<string, Omit<AuthState, "login" | "register" | "logout" | "setSession">> = {
+const demoSessions: Record<string, Omit<AuthState, "login" | "register" | "logout" | "setSession" | "updateUser">> = {
   "free@slipora.example": {
     user: { id: "demo-free-user", name: "Free Tier Owner", email: "free@slipora.example" },
     company: { id: "demo-free-company", name: "Free Tier Workspace", plan: "free" },
@@ -91,6 +95,9 @@ export const useAuthStore = create<AuthState>()(
         localStorage.setItem("slipora.accessToken", payload.accessToken);
         set({ ...payload, role: "owner" });
       },
+      updateUser: (partial) => set((state) => ({
+        user: state.user ? { ...state.user, ...partial } : null
+      })),
       login: async (email, password, rememberMe) => {
         try {
           const response = await api.post<{

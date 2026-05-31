@@ -4,8 +4,7 @@ import {
   Gauge,
   History,
   LayoutTemplate,
-  Printer,
-  Settings
+  Printer
 } from "lucide-react";
 
 export const navigation = [
@@ -14,6 +13,6 @@ export const navigation = [
   { label: "Create Slip", to: "/generate", icon: Printer },
   { label: "Slip History", to: "/history", icon: History },
   { label: "Reports", to: "/analytics", icon: BarChart3 },
-  { label: "Slip Design", to: "/templates", icon: LayoutTemplate },
-  { label: "Settings", to: "/settings", icon: Settings }
+  { label: "Slip Design", to: "/templates", icon: LayoutTemplate }
 ];
+

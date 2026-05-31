@@ -27,6 +27,7 @@ const SlipHistoryPage = lazy(() => import("@/features/slips/SlipHistoryPage").th
 const TeamPage = lazy(() => import("@/features/team/TeamPage").then((module) => ({ default: module.TeamPage })));
 const TemplateBuilderPage = lazy(() => import("@/features/templates/TemplateBuilderPage").then((module) => ({ default: module.TemplateBuilderPage })));
 const TemplatesPage = lazy(() => import("@/features/templates/TemplatesPage").then((module) => ({ default: module.TemplatesPage })));
+const ProfilePage = lazy(() => import("@/features/profile/ProfilePage").then((module) => ({ default: module.ProfilePage })));
 
 import { PageLoader } from "@/components/ui/PageLoader";
 import {
@@ -87,7 +88,8 @@ const router = createBrowserRouter([
           { path: "/search", element: screen(<SearchPage />, <TablePageSkeleton columns={4} />) },
           { path: "/print-queue", element: screen(<PrintQueuePage />, <TablePageSkeleton columns={5} />) },
           { path: "/backups", element: screen(<BackupsPage />, <TablePageSkeleton columns={6} />) },
-          { path: "/activity", element: screen(<ActivityPage />, <TablePageSkeleton columns={3} />) }
+          { path: "/activity", element: screen(<ActivityPage />, <TablePageSkeleton columns={3} />) },
+          { path: "/profile", element: screen(<ProfilePage />, <FormPageSkeleton />) }
         ]
       }
     ]
