@@ -32,7 +32,7 @@ export function RegisterPage() {
       <Card className="w-full max-w-lg">
         <CardHeader>
           <PackagePlus className="h-9 w-9 text-primary" />
-          <CardTitle className="text-2xl font-black">Create PackSlip account</CardTitle>
+          <CardTitle className="text-2xl font-black">Create Slipora account</CardTitle>
           <CardDescription>Add your company and start printing simple slips.</CardDescription>
         </CardHeader>
         <CardContent>

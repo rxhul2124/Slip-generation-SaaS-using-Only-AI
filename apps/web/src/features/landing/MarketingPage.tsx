@@ -13,7 +13,7 @@ const pages = {
   product: {
     eyebrow: "Product",
     title: "A workspace for packing slip operations",
-    intro: "PackSlip brings company records, product data, slip templates, generation history, printing, and plan controls into one focused workspace.",
+    intro: "Slipora brings company records, product data, slip templates, generation history, printing, and plan controls into one focused workspace.",
     icon: PackageCheck,
     sections: [
       ["Template-first workflow", "Start from default small and medium templates, then create account-scoped layouts for your own slip formats."],
@@ -52,7 +52,7 @@ const pages = {
   },
   resources: {
     eyebrow: "Resources",
-    title: "Guides for running PackSlip",
+    title: "Guides for running Slipora",
     intro: "Use these resources to understand the workflow, plan limits, print setup, and how to keep data clean while generating slips.",
     icon: BookOpen,
     sections: [
@@ -97,7 +97,7 @@ const pages = {
   company: {
     eyebrow: "Company",
     title: "Built for focused operations teams",
-    intro: "PackSlip is designed around repeatable packing slip work instead of broad document generation.",
+    intro: "Slipora is designed around repeatable packing slip work instead of broad document generation.",
     icon: BriefcaseBusiness,
     sections: [
       ["Focused scope", "The product stays close to companies, products, slips, templates, and printing."],
@@ -107,11 +107,11 @@ const pages = {
   },
   about: {
     eyebrow: "Company",
-    title: "About PackSlip",
-    intro: "PackSlip helps small and growing teams move from messy manual slip creation to a more consistent printed workflow.",
+    title: "About Slipora",
+    intro: "Slipora helps small and growing teams move from messy manual slip creation to a more consistent printed workflow.",
     icon: PackageCheck,
     sections: [
-      ["Why it exists", "Packing slip work often lives in spreadsheets, screenshots, and repeated typing. PackSlip centralizes that routine."],
+      ["Why it exists", "Packing slip work often lives in spreadsheets, screenshots, and repeated typing. Slipora centralizes that routine."],
       ["Who it serves", "Teams that need company-wise products, repeatable slip formats, and faster browser-based printing."],
       ["What stays simple", "Default templates, scoped custom templates, clear print previews, and direct plan limits."]
     ]
@@ -152,7 +152,7 @@ export function MarketingPage({ page }: { page: MarketingPageKey }) {
         <div className="mx-auto flex h-14 max-w-[1180px] items-center justify-between px-4 sm:px-6">
           <Link to="/" className="flex items-center gap-2 text-sm font-black">
             <ArrowLeft className="h-4 w-4" />
-            PackSlip
+            Slipora
           </Link>
           <div className="flex items-center gap-2">
             <Button asChild variant="outline" size="sm">

@@ -11,7 +11,7 @@ export function ForgotPasswordPage() {
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Reset password</CardTitle>
-          <CardDescription>Enter your email and PackSlip will send a reset link.</CardDescription>
+          <CardDescription>Enter your email and Slipora will send a reset link.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <Input placeholder="email@company.com" />

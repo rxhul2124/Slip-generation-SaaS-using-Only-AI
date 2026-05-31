@@ -15,7 +15,7 @@ import { searchRouter } from "./search.routes.js";
 
 export const router = Router();
 
-router.get("/health", (_req, res) => res.json({ status: "ok", service: "packslip-api" }));
+router.get("/health", (_req, res) => res.json({ status: "ok", service: "slipora-api" }));
 router.use("/auth", authRouter);
 router.use("/products", productRouter);
 router.use("/customers", customerRouter);

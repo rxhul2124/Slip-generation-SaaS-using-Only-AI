@@ -1,8 +1,8 @@
 {
-  "name": "packslip",
+  "name": "slipora",
   "version": "1.0.0",
   "private": true,
-  "description": "PackSlip - enterprise packing slip, label generation, pagination, printing, and SaaS workflow platform.",
+  "description": "Slipora - enterprise packing slip, label generation, pagination, printing, and SaaS workflow platform.",
   "type": "module",
   "workspaces": [
     "apps/api",
@@ -29,5 +29,8 @@
   "engines": {
     "node": ">=20.11.0",
     "npm": ">=10.0.0"
+  },
+  "dependencies": {
+    "glob": "^13.0.6"
   }
 }

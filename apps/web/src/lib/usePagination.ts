@@ -5,7 +5,7 @@ export function usePagination(defaultLimit = 25) {
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Try to read limit from localStorage, fallback to defaultLimit
-  const initialLimit = parseInt(localStorage.getItem("packslip.pageSize") || String(defaultLimit), 10);
+  const initialLimit = parseInt(localStorage.getItem("slipora.pageSize") || String(defaultLimit), 10);
   const urlLimit = searchParams.get("limit") ? parseInt(searchParams.get("limit")!, 10) : initialLimit;
   const urlPage = searchParams.get("page") ? parseInt(searchParams.get("page")!, 10) : 1;
 
@@ -23,7 +23,7 @@ export function usePagination(defaultLimit = 25) {
     }
     if (currentParams.get("limit") !== String(limit)) {
       currentParams.set("limit", String(limit));
-      localStorage.setItem("packslip.pageSize", String(limit));
+      localStorage.setItem("slipora.pageSize", String(limit));
       changed = true;
     }
 

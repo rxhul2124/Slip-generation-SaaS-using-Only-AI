@@ -3,7 +3,7 @@ import { resources, type ListParams } from "./api";
 import { sampleTemplates } from "./sampleData";
 import type { Customer, GeneratedSlip, Product } from "./types";
 
-const localSlipsKey = "packslip.localSlips";
+const localSlipsKey = "slipora.localSlips";
 
 function withFallback<T>(items: T[] | undefined, fallback: T[]) {
   return items?.length ? items : fallback;
@@ -96,8 +96,12 @@ export function useTemplates(params?: ListParams) {
   return useQuery({
     queryKey: ["templates", params],
     queryFn: async () => {
-      const response = await resources.templates.list(params);
-      return { data: withFallback(response.data, sampleTemplates), meta: response.meta };
+      try {
+        const response = await resources.templates.list(params);
+        return { data: withFallback(response.data, sampleTemplates), meta: response.meta };
+      } catch (err) {
+        return { data: sampleTemplates, meta: emptyMeta };
+      }
     },
     placeholderData: keepPreviousData,
     retry: false,

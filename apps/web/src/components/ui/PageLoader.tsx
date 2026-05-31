@@ -1,5 +1,4 @@
 import { Loader2 } from "lucide-react";
-import { TableSkeleton } from "./TableSkeleton";
 
 export function PageLoader() {
   return (
@@ -13,11 +12,10 @@ export function PageLoader() {
         <div className="h-10 w-24 rounded bg-muted animate-pulse" />
       </div>
       <div className="flex-1 rounded-md border bg-card text-card-foreground shadow-sm p-4">
-        <div className="flex items-center justify-center py-12 text-muted-foreground">
+        <div className="flex items-center justify-center py-24 text-muted-foreground">
           <Loader2 className="mr-2 h-6 w-6 animate-spin" />
           <span className="text-sm font-medium">Loading module...</span>
         </div>
-        <TableSkeleton columns={5} />
       </div>
     </div>
   );

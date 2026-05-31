@@ -93,6 +93,13 @@ export interface SlipTemplate {
     imageDataUrl?: string;
   };
   elements: TemplateElement[];
+  layoutMode?: "freeform" | "blocks";
+  blocks?: {
+    header?: { showLogo: boolean; showDate: boolean; showSlipId: boolean; showInvoiceId: boolean; align: "left" | "center" | "right" };
+    customer?: { showPhone: boolean; showEmail: boolean; showAddress: boolean; showContactPerson: boolean };
+    table?: { columns: ("index" | "product" | "sku" | "qty" | "price" | "total")[] };
+    footer?: { showNotes: boolean; showTotals: boolean; showSignatures: boolean };
+  };
 }
 
 export interface GeneratedSlip {
@@ -108,6 +115,7 @@ export interface GeneratedSlip {
   quantity: number;
   quantityUnit?: QuantityUnit;
   displayWeight?: { value?: number; unit?: WeightUnit | string };
+  lineItems?: Array<{ productName: string; sku?: string; quantity: number; unitPrice?: number; totalPrice?: number }>;
   destination?: string;
   notes?: string;
   barcodeValue?: string;

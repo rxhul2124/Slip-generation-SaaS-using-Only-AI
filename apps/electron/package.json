@@ -1,9 +1,9 @@
 {
-  "name": "@packslip/desktop",
+  "name": "@slipora/desktop",
   "version": "1.0.0",
   "private": true,
-  "description": "PackSlip Desktop shell for offline and local printing workflows.",
-  "author": "PackSlip",
+  "description": "Slipora Desktop shell for offline and local printing workflows.",
+  "author": "Slipora",
   "main": "src/main.cjs",
   "scripts": {
     "dev": "electron .",
@@ -21,8 +21,8 @@
     "electron-builder": "^25.0.5"
   },
   "build": {
-    "appId": "com.packslip.desktop",
-    "productName": "PackSlip Desktop",
+    "appId": "com.slipora.desktop",
+    "productName": "Slipora Desktop",
     "files": [
       "src/**/*"
     ],

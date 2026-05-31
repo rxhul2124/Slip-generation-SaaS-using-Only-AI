@@ -1,6 +1,6 @@
-# PackSlip
+# Slipora
 
-PackSlip is a production-oriented SaaS platform for packing slip, label, thermal label, pagination, printing, PDF export, template design, audit, analytics, team, billing, and desktop workflows.
+Slipora is a production-oriented SaaS platform for packing slip, label, thermal label, pagination, printing, PDF export, template design, audit, analytics, team, billing, and desktop workflows.
 
 ## What Is Included
 
@@ -62,7 +62,7 @@ npm audit --omit=dev --audit-level=high
 Default seeded credentials:
 
 ```txt
-Email: ops@packslip.example
+Email: ops@slipora.example
 Password: ChangeMe123!
 ```
 

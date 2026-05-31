@@ -1,6 +1,6 @@
 import { cloudinary } from "../config/cloudinary.js";
 
-export async function uploadAsset(file, folder = "packslip") {
+export async function uploadAsset(file, folder = "slipora") {
   if (!file) return null;
   if (!process.env.CLOUDINARY_CLOUD_NAME) {
     return {

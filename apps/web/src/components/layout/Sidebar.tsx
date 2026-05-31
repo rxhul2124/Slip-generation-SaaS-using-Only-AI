@@ -1,12 +1,15 @@
-import { Link, NavLink } from "react-router-dom";
+import { Link, NavLink, useLocation } from "react-router-dom";
 import { Menu, PackageCheck } from "lucide-react";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useUiStore } from "@/stores/uiStore";
 import { navigation } from "./navigation";
+import { SidebarProfileSection } from "./SidebarProfileSection";
 
 export function Sidebar() {
   const { sidebarCollapsed, toggleSidebar } = useUiStore();
+  const location = useLocation();
 
   return (
     <aside
@@ -23,7 +26,7 @@ export function Sidebar() {
             </span>
             {!sidebarCollapsed && (
               <span className="min-w-0">
-                <span className="block truncate text-base font-black">PackSlip</span>
+                <span className="block truncate text-base font-black">Slipora</span>
                 <span className="block truncate text-xs text-muted-foreground">Simple slip printing</span>
               </span>
             )}
@@ -33,26 +36,37 @@ export function Sidebar() {
           </Button>
         </div>
 
-        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-          {navigation.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) =>
-                cn(
-                  "group flex h-10 items-center gap-3 rounded-md px-3 text-sm font-medium transition",
-                  isActive ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted hover:text-foreground",
+        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4 relative">
+          {navigation.map((item) => {
+            const isActive = location.pathname.startsWith(item.to);
+            return (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className={cn(
+                  "group relative flex h-10 items-center gap-3 rounded-md px-3 text-sm font-medium transition-colors z-10",
+                  isActive ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground",
                   sidebarCollapsed && "justify-center px-0"
-                )
-              }
-              title={item.label}
-            >
-              <item.icon className="h-4 w-4 shrink-0" />
-              {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
-            </NavLink>
-          ))}
+                )}
+                title={item.label}
+              >
+                {isActive && (
+                  <motion.div
+                    layoutId="sidebar-active-indicator"
+                    className="absolute inset-0 -z-10 rounded-md bg-primary shadow-sm"
+                    transition={{ type: "spring", stiffness: 350, damping: 30 }}
+                  />
+                )}
+                <item.icon className="h-4 w-4 shrink-0 relative z-10" />
+                {!sidebarCollapsed && <span className="truncate relative z-10">{item.label}</span>}
+              </NavLink>
+            );
+          })}
         </nav>
+
+        <SidebarProfileSection collapsed={sidebarCollapsed} />
       </div>
     </aside>
   );
 }
+

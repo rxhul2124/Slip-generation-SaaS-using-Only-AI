@@ -131,17 +131,75 @@ function ProductEditor({
   saveLabel?: string;
 }) {
   const set = (patch: Partial<ProductForm>) => onChange({ ...value, ...patch });
+  const [errors, setErrors] = useState<{ partName?: string; partNumber?: string; quantityDefault?: string }>({});
+
+  const validateField = (name: string, val: string) => {
+    let err = "";
+    if (name === "partName") {
+      if (!val || val.trim().length < 2) {
+        err = "Part name must be at least 2 characters.";
+      }
+    } else if (name === "partNumber") {
+      if (!val || val.trim().length < 2) {
+        err = "Part number (SKU) must be at least 2 characters.";
+      }
+    } else if (name === "quantityDefault") {
+      const num = Number(val);
+      if (!val || isNaN(num) || num <= 0 || !Number.isInteger(num)) {
+        err = "Default quantity must be a positive integer.";
+      }
+    }
+    setErrors(prev => ({ ...prev, [name]: err }));
+    return !err;
+  };
+
+  const handleSave = () => {
+    const isNameValid = validateField("partName", value.partName);
+    const isNumberValid = validateField("partNumber", value.partNumber);
+    const isQtyValid = validateField("quantityDefault", value.quantityDefault);
+
+    if (isNameValid && isNumberValid && isQtyValid) {
+      setErrors({});
+      onSave();
+    }
+  };
 
   return (
     <div className="space-y-3 rounded-md border bg-muted/30 p-3">
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="space-y-1 text-sm">
           <span className="font-semibold">Part Name</span>
-          <Input value={value.partName} onChange={(event) => set({ partName: event.target.value })} placeholder="Example: ADAPTER RH 14 HEX" />
+          <Input 
+            value={value.partName} 
+            onChange={(event) => {
+              const val = event.target.value;
+              set({ partName: val });
+              validateField("partName", val);
+            }} 
+            placeholder="Example: ADAPTER RH 14 HEX" 
+          />
+          {errors.partName && (
+            <span className="text-[11px] font-medium text-red-500 block mt-0.5 animate-in fade-in slide-in-from-top-1">
+              {errors.partName}
+            </span>
+          )}
         </label>
         <label className="space-y-1 text-sm">
           <span className="font-semibold">Part Number</span>
-          <Input value={value.partNumber} onChange={(event) => set({ partNumber: event.target.value })} placeholder="Example: S-09B-02020" />
+          <Input 
+            value={value.partNumber} 
+            onChange={(event) => {
+              const val = event.target.value;
+              set({ partNumber: val });
+              validateField("partNumber", val);
+            }} 
+            placeholder="Example: S-09B-02020" 
+          />
+          {errors.partNumber && (
+            <span className="text-[11px] font-medium text-red-500 block mt-0.5 animate-in fade-in slide-in-from-top-1">
+              {errors.partNumber}
+            </span>
+          )}
         </label>
       </div>
       <div className="grid gap-3 sm:grid-cols-3">
@@ -177,7 +235,22 @@ function ProductEditor({
         </label>
         <label className="space-y-1 text-sm">
           <span className="font-semibold">Default Quantity</span>
-          <Input value={value.quantityDefault} onChange={(event) => set({ quantityDefault: event.target.value })} placeholder="300" type="number" min="1" />
+          <Input 
+            value={value.quantityDefault} 
+            onChange={(event) => {
+              const val = event.target.value;
+              set({ quantityDefault: val });
+              validateField("quantityDefault", val);
+            }} 
+            placeholder="300" 
+            type="number" 
+            min="1" 
+          />
+          {errors.quantityDefault && (
+            <span className="text-[11px] font-medium text-red-500 block mt-0.5 animate-in fade-in slide-in-from-top-1">
+              {errors.quantityDefault}
+            </span>
+          )}
         </label>
         <label className="space-y-1 text-sm">
           <span className="font-semibold">Barcode</span>
@@ -189,7 +262,7 @@ function ProductEditor({
         <Input value={value.qrReference} onChange={(event) => set({ qrReference: event.target.value })} placeholder="Use part number, order code, or QR text" />
       </label>
       <Textarea value={value.notes} onChange={(event) => set({ notes: event.target.value })} placeholder="Notes for this company product" />
-      <Button type="button" className="w-full" onClick={onSave}>
+      <Button type="button" className="w-full" onClick={handleSave}>
         <Save className="h-4 w-4" /> {saveLabel}
       </Button>
     </div>
@@ -260,8 +333,10 @@ export function CustomersPage() {
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
+    mode: "onChange",
     defaultValues: { name: "", contactPerson: "", email: "", phone: "", taxNumber: "", shippingInstructions: "" }
   });
+  const { errors } = form.formState;
   const { ref: formNameRef, ...nameField } = form.register("name");
 
   const cacheCustomer = (customer: Customer) => {
@@ -631,12 +706,52 @@ export function CustomersPage() {
                       nameRef.current = element;
                     }}
                   />
+                  {errors.name && (
+                    <span className="text-[11px] font-medium text-red-500 block mt-0.5 animate-in fade-in slide-in-from-top-1">
+                      {errors.name.message}
+                    </span>
+                  )}
                 </label>
-                <Input placeholder="Contact person name" {...form.register("contactPerson")} />
-                <Input placeholder="Email address" {...form.register("email")} />
-                <Input placeholder="Phone number" {...form.register("phone")} />
-                <Input placeholder="GST / tax number" {...form.register("taxNumber")} />
-                <Textarea placeholder="Shipping or packing instructions" {...form.register("shippingInstructions")} />
+                <div className="space-y-1">
+                  <Input placeholder="Contact person name" {...form.register("contactPerson")} />
+                  {errors.contactPerson && (
+                    <span className="text-[11px] font-medium text-red-500 block mt-0.5 animate-in fade-in slide-in-from-top-1">
+                      {errors.contactPerson.message}
+                    </span>
+                  )}
+                </div>
+                <div className="space-y-1">
+                  <Input placeholder="Email address" {...form.register("email")} />
+                  {errors.email && (
+                    <span className="text-[11px] font-medium text-red-500 block mt-0.5 animate-in fade-in slide-in-from-top-1">
+                      {errors.email.message}
+                    </span>
+                  )}
+                </div>
+                <div className="space-y-1">
+                  <Input placeholder="Phone number" {...form.register("phone")} />
+                  {errors.phone && (
+                    <span className="text-[11px] font-medium text-red-500 block mt-0.5 animate-in fade-in slide-in-from-top-1">
+                      {errors.phone.message}
+                    </span>
+                  )}
+                </div>
+                <div className="space-y-1">
+                  <Input placeholder="GST / tax number" {...form.register("taxNumber")} />
+                  {errors.taxNumber && (
+                    <span className="text-[11px] font-medium text-red-500 block mt-0.5 animate-in fade-in slide-in-from-top-1">
+                      {errors.taxNumber.message}
+                    </span>
+                  )}
+                </div>
+                <div className="space-y-1">
+                  <Textarea placeholder="Shipping or packing instructions" {...form.register("shippingInstructions")} />
+                  {errors.shippingInstructions && (
+                    <span className="text-[11px] font-medium text-red-500 block mt-0.5 animate-in fade-in slide-in-from-top-1">
+                      {errors.shippingInstructions.message}
+                    </span>
+                  )}
+                </div>
 
                 {companyFormMode === "create" ? (
                   <div className="space-y-3 border-t pt-3">

@@ -17,7 +17,7 @@ async function ensureCsrfToken(headers: Headers) {
 }
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const token = localStorage.getItem("packslip.accessToken");
+  const token = localStorage.getItem("slipora.accessToken");
   const headers = new Headers(options.headers);
 
   if (!headers.has("Content-Type") && !(options.body instanceof FormData)) {
@@ -38,7 +38,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
-    throw new Error(body.message || "PackSlip request failed");
+    throw new Error(body.message || "Slipora request failed");
   }
 
   if (response.status === 204) return undefined as T;
@@ -89,7 +89,8 @@ export const resources = {
     list: (params?: ListParams) => api.get<ApiList<import("./types").SlipTemplate>>(`/templates${buildQueryParams(params)}`),
     create: (body: unknown) => api.post<ApiItem<import("./types").SlipTemplate>>("/templates", body),
     update: (id: string, body: unknown) => api.patch<ApiItem<import("./types").SlipTemplate>>(`/templates/${id}`, body),
-    delete: (id: string) => api.delete<void>(`/templates/${id}`)
+    delete: (id: string) => api.delete<void>(`/templates/${id}`),
+    analyzeImage: (formData: FormData) => api.post<ApiItem<{ elements: import("./types").TemplateElement[] }>>("/templates/analyze-image", formData)
   },
   presets: {
     list: (params?: ListParams) => api.get<ApiList<Preset>>(`/presets${buildQueryParams(params)}`),
@@ -124,5 +125,11 @@ export const resources = {
           plans: Record<string, { name: string; monthlySlipLimit: number | string | null; price: number | null; features: string[] }>;
         }>
       >("/billing")
+  },
+  auth: {
+    updateProfile: (body: { name?: string; email?: string; locale?: string; timezone?: string; avatarUrl?: string }) =>
+      api.patch<ApiItem<{ user: unknown }>>("/auth/profile", body),
+    updatePassword: (body: { currentPassword: string; newPassword: string }) =>
+      api.post<{ status: string; message: string }>("/auth/update-password", body)
   }
 };

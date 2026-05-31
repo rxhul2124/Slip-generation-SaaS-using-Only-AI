@@ -24,7 +24,7 @@ export function LoginPage() {
   const navigate = useNavigate();
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { email: "ops@packslip.example", password: "ChangeMe123!", rememberMe: true }
+    defaultValues: { email: "ops@slipora.example", password: "ChangeMe123!", rememberMe: true }
   });
 
   return (
@@ -34,7 +34,7 @@ export function LoginPage() {
           <div className="mb-2 grid h-11 w-11 place-items-center rounded-lg bg-primary text-primary-foreground">
             <PackageCheck className="h-6 w-6" />
           </div>
-          <CardTitle className="text-2xl font-black">Login to PackSlip</CardTitle>
+          <CardTitle className="text-2xl font-black">Login to Slipora</CardTitle>
           <CardDescription>Create slips, manage companies, and print faster.</CardDescription>
         </CardHeader>
         <CardContent>

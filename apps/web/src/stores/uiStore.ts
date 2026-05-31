@@ -23,7 +23,7 @@ export const useUiStore = create<UiState>()(
       setCommandOpen: (open) => set({ commandOpen: open })
     }),
     {
-      name: "packslip-ui-preferences",
+      name: "slipora-ui-preferences",
       partialize: (state) => ({ darkMode: state.darkMode })
     }
   )

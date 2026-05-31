@@ -1,7 +1,7 @@
 module.exports = {
   apps: [
     {
-      name: "packslip-api",
+      name: "slipora-api",
       cwd: "apps/api",
       script: "src/server.js",
       instances: "max",

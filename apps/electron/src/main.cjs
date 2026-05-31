@@ -4,7 +4,7 @@ const crypto = require("node:crypto");
 const Store = require("electron-store");
 
 const store = new Store({
-  name: "packslip-desktop",
+  name: "slipora-desktop",
   defaults: {
     apiUrl: "http://localhost:5000/api/v1",
     webUrl: "http://localhost:5173",
@@ -18,7 +18,7 @@ function createWindow() {
     height: 980,
     minWidth: 1180,
     minHeight: 760,
-    title: "PackSlip Desktop",
+    title: "Slipora Desktop",
     backgroundColor: "#f7faf9",
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
@@ -27,7 +27,7 @@ function createWindow() {
     }
   });
 
-  const webUrl = process.env.PACKSLIP_WEB_URL || store.get("webUrl");
+  const webUrl = process.env.SLIPORA_WEB_URL || store.get("webUrl");
   win.loadURL(webUrl).catch(() => {
     win.loadFile(path.join(__dirname, "offline.html"));
   });
@@ -47,13 +47,13 @@ app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
 });
 
-ipcMain.handle("packslip:get-printers", async (event) => event.sender.getPrintersAsync());
-ipcMain.handle("packslip:get-config", async () => store.store);
-ipcMain.handle("packslip:set-config", async (_event, patch) => {
+ipcMain.handle("slipora:get-printers", async (event) => event.sender.getPrintersAsync());
+ipcMain.handle("slipora:get-config", async () => store.store);
+ipcMain.handle("slipora:set-config", async (_event, patch) => {
   for (const [key, value] of Object.entries(patch)) store.set(key, value);
   return store.store;
 });
-ipcMain.handle("packslip:queue-offline-job", async (_event, job) => {
+ipcMain.handle("slipora:queue-offline-job", async (_event, job) => {
   const queue = store.get("offlineQueue", []);
   const queued = { ...job, queuedAt: new Date().toISOString(), id: crypto.randomUUID() };
   store.set("offlineQueue", [...queue, queued]);

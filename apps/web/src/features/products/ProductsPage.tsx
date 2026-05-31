@@ -25,11 +25,11 @@ import { useDebounce } from "@/lib/useDebounce";
 import { useState } from "react";
 
 const schema = z.object({
-  name: z.string().min(2),
-  sku: z.string().min(2),
+  name: z.string().min(2, "Product name must be at least 2 characters."),
+  sku: z.string().min(2, "SKU must be at least 2 characters."),
   category: z.string().optional(),
   packagingType: z.string().optional(),
-  quantityDefault: z.coerce.number().int().positive(),
+  quantityDefault: z.coerce.number().int().positive("Default quantity must be a positive integer."),
   fragile: z.boolean(),
   hazardous: z.boolean()
 });
@@ -50,6 +50,7 @@ export function ProductsPage() {
   const nameRef = useRef<HTMLInputElement | null>(null);
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
+    mode: "onChange",
     defaultValues: {
       name: "",
       sku: "",
@@ -60,6 +61,7 @@ export function ProductsPage() {
       hazardous: false
     }
   });
+  const { errors } = form.formState;
   const { ref: formNameRef, ...nameField } = form.register("name");
 
   const createProduct = useMutation({
@@ -203,28 +205,63 @@ export function ProductsPage() {
           </CardHeader>
           <CardContent>
             <form className="space-y-3" onSubmit={form.handleSubmit((values) => createProduct.mutate(values))}>
-              <Input
-                placeholder="Product name"
-                {...nameField}
-                ref={(element) => {
-                  formNameRef(element);
-                  nameRef.current = element;
-                }}
-              />
-              <Input placeholder="SKU" {...form.register("sku")} />
-              <div className="grid grid-cols-2 gap-3">
-                <Select {...form.register("category")}>
-                  <option value="" disabled>
-                    Select category
-                  </option>
-                  <option>Cartons</option>
-                  <option>Bottles</option>
-                  <option>Consumables</option>
-                  <option>Finished Goods</option>
-                </Select>
-                <Input type="number" min={1} placeholder="Default quantity" {...form.register("quantityDefault")} />
+              <div className="space-y-1">
+                <Input
+                  placeholder="Product name"
+                  {...nameField}
+                  ref={(element) => {
+                    formNameRef(element);
+                    nameRef.current = element;
+                  }}
+                />
+                {errors.name && (
+                  <span className="text-[11px] font-medium text-red-500 block mt-0.5 animate-in fade-in slide-in-from-top-1">
+                    {errors.name.message}
+                  </span>
+                )}
               </div>
-              <Input placeholder="Packaging type" {...form.register("packagingType")} />
+              <div className="space-y-1">
+                <Input placeholder="SKU" {...form.register("sku")} />
+                {errors.sku && (
+                  <span className="text-[11px] font-medium text-red-500 block mt-0.5 animate-in fade-in slide-in-from-top-1">
+                    {errors.sku.message}
+                  </span>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Select {...form.register("category")}>
+                    <option value="" disabled>
+                      Select category
+                    </option>
+                    <option>Cartons</option>
+                    <option>Bottles</option>
+                    <option>Consumables</option>
+                    <option>Finished Goods</option>
+                  </Select>
+                  {errors.category && (
+                    <span className="text-[11px] font-medium text-red-500 block mt-0.5 animate-in fade-in slide-in-from-top-1">
+                      {errors.category.message}
+                    </span>
+                  )}
+                </div>
+                <div className="space-y-1">
+                  <Input type="number" min={1} placeholder="Default quantity" {...form.register("quantityDefault")} />
+                  {errors.quantityDefault && (
+                    <span className="text-[11px] font-medium text-red-500 block mt-0.5 animate-in fade-in slide-in-from-top-1">
+                      {errors.quantityDefault.message}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Input placeholder="Packaging type" {...form.register("packagingType")} />
+                {errors.packagingType && (
+                  <span className="text-[11px] font-medium text-red-500 block mt-0.5 animate-in fade-in slide-in-from-top-1">
+                    {errors.packagingType.message}
+                  </span>
+                )}
+              </div>
               <div className="flex flex-wrap gap-3">
                 <Switch checked={form.watch("fragile")} onCheckedChange={(value) => form.setValue("fragile", value)} label="Fragile" />
                 <Switch checked={form.watch("hazardous")} onCheckedChange={(value) => form.setValue("hazardous", value)} label="Hazardous" />
