@@ -106,14 +106,8 @@ export const updatePassword = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id).select("+passwordHash");
   if (!user) throw new AppError("User not found", 404);
 
-  // If local / demo user session, allow changing password directly without current password check
-  const token = req.cookies?.accessToken || req.headers.authorization;
-  if (token && (token.includes("demo") || token.includes("null") || token.includes("undefined"))) {
-    // skip matches check for demo
-  } else {
-    const matches = await user.comparePassword(currentPassword);
-    if (!matches) throw new AppError("Incorrect current password", 400);
-  }
+  const matches = await user.comparePassword(currentPassword);
+  if (!matches) throw new AppError("Incorrect current password", 400);
 
   if (newPassword.length < 8) {
     throw new AppError("New password must be at least 8 characters long", 400);

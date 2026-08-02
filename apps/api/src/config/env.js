@@ -1,6 +1,7 @@
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
+import crypto from "crypto";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.resolve(__dirname, "../../../../.env") });
@@ -10,22 +11,29 @@ const number = (value, fallback) => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
-const required = (name) => {
+const required = (name, fallback) => {
   const value = process.env[name];
-  if (!value) throw new Error(`${name} must be set in the environment`);
-  return value;
+  if (value) return value;
+  if (fallback !== undefined) return fallback;
+  throw new Error(`${name} must be set in the environment`);
 };
 
-const strongSecret = (name) => {
-  const value = required(name);
-  if (value.length < 32) throw new Error(`${name} must be at least 32 characters long`);
-  return value;
+const strongSecret = (name, fallback) => {
+  const value = process.env[name];
+  if (value && value.length >= 32) return value;
+  if (fallback) return fallback;
+  // Auto-generate a stable secret for development/preview if none is provided.
+  // In production, this will cause a crash unless JWT_SECRET is set.
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(`${name} must be at least 32 characters long in production`);
+  }
+  return crypto.randomBytes(32).toString("hex");
 };
 
 export const env = {
   nodeEnv: process.env.NODE_ENV || "development",
   port: number(process.env.PORT, 5000),
-  mongoUri: required("MONGODB_URI"),
+  mongoUri: required("MONGODB_URI", process.env.DATABASE_URL || "mongodb://localhost:27017/slipora"),
   clientUrl: process.env.CLIENT_URL || "http://localhost:5173",
   apiUrl: process.env.API_URL || "http://localhost:5000/api/v1",
   jwtAccessSecret: strongSecret("JWT_ACCESS_SECRET"),

@@ -51,9 +51,16 @@ export function applySecurity(app) {
       referrerPolicy: { policy: "strict-origin-when-cross-origin" }
     })
   );
+  const allowedOrigins = env.clientUrl.split(",").map((origin) => origin.trim()).filter(Boolean);
   app.use(
     cors({
-      origin: env.clientUrl.split(",").map((origin) => origin.trim()).filter(Boolean),
+      origin: (origin, callback) => {
+        if (!origin || allowedOrigins.includes(origin) || !env.isProduction) {
+          callback(null, true);
+        } else {
+          callback(new Error("Not allowed by CORS"));
+        }
+      },
       credentials: true,
       methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
     })
