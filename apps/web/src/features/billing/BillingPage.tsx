@@ -11,9 +11,26 @@ import { formatCurrency } from "@/lib/utils";
 import { useAuthStore } from "@/stores/authStore";
 import { useNotificationStore } from "@/stores/notificationStore";
 
+declare global {
+  interface Window {
+    Razorpay?: new (options: {
+      key: string;
+      amount: number;
+      currency: string;
+      name: string;
+      description: string;
+      order_id: string;
+      handler: (response: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }) => void;
+      prefill?: { name?: string; email?: string };
+      theme?: { color: string };
+      modal?: { ondismiss?: () => void };
+    }) => { open: () => void };
+  }
+}
+
 const plans = [
   { id: "free", name: "Free", price: 0, label: "50 slips/month", features: ["1 user", "2 companies", "10 products", "2 custom templates", "Browser printing"] },
-  { id: "pro", name: "Pro", price: 699, label: "for growing teams", features: ["5 users", "3 active devices", "Bulk CSV", "Presets", "Reports", "Backups", "Logo import"] },
+  { id: "pro", name: "Pro", price: 499, label: "for growing teams", features: ["5 users", "3 active devices", "Bulk CSV", "Presets", "Reports", "Backups", "Logo import"] },
   { id: "enterprise", name: "Enterprise", price: 0, label: "custom contract", features: ["Users by contract", "Audit logs", "SSO-ready controls", "Dedicated restore", "Priority support"] }
 ] as const;
 
@@ -22,6 +39,7 @@ type PlanId = (typeof plans)[number]["id"];
 export function BillingPage() {
   const notify = useNotificationStore((state) => state.push);
   const company = useAuthStore((state) => state.company);
+  const user = useAuthStore((state) => state.user);
   const [billing, setBilling] = useState<BillingSubscription | null>(null);
   const [loading, setLoading] = useState(true);
   const [pendingPlan, setPendingPlan] = useState<PlanId | null>(null);
@@ -51,6 +69,54 @@ export function BillingPage() {
     };
   }, []);
 
+  const startRazorpayCheckout = async (planId: PlanId) => {
+    if (!window.Razorpay) {
+      notify({ tone: "error", title: "Checkout unavailable", body: "Payment library failed to load. Please refresh and try again." });
+      return;
+    }
+
+    setPendingPlan(planId);
+    try {
+      const orderResponse = await resources.billing.createOrder({ plan: planId });
+      const { order, keyId } = orderResponse.data;
+
+      const rzp = new window.Razorpay({
+        key: keyId,
+        amount: order.amount,
+        currency: order.currency,
+        name: "Slipora Pro",
+        description: "Pro plan — monthly subscription",
+        order_id: order.id,
+        prefill: { name: user?.name, email: user?.email },
+        theme: { color: "#2563eb" },
+        handler: async (response) => {
+          try {
+            const verifyResponse = await resources.billing.verifyPayment({
+              razorpayOrderId: response.razorpay_order_id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature,
+              plan: planId
+            });
+            setBilling(verifyResponse.data);
+            notify({ tone: "success", title: "Payment successful", body: "Your Pro plan is now active." });
+          } catch {
+            notify({ tone: "error", title: "Payment verification failed", body: "Please contact support if you were charged." });
+          }
+        },
+        modal: {
+          ondismiss: () => {
+            setPendingPlan(null);
+            notify({ tone: "info", title: "Checkout cancelled", body: "You can upgrade anytime." });
+          }
+        }
+      });
+      rzp.open();
+    } catch {
+      notify({ tone: "error", title: "Checkout failed", body: "Could not start payment. Please try again." });
+      setPendingPlan(null);
+    }
+  };
+
   const beginCheckout = (planId: PlanId) => {
     const plan = plans.find((item) => item.id === planId) || plans[0];
     if (planId === activePlan) {
@@ -58,16 +124,17 @@ export function BillingPage() {
       return;
     }
 
-    setPendingPlan(planId);
-    notify({
-      tone: "info",
-      title: planId === "enterprise" ? "Sales handoff required" : "Checkout required",
-      body:
-        planId === "enterprise"
-          ? "Enterprise plans are activated after the contract is attached to billing."
-          : "Paid plans are activated only after the payment provider confirms the subscription."
-    });
-    window.setTimeout(() => setPendingPlan(null), 400);
+    if (planId === "free") {
+      notify({ tone: "info", title: "Free plan active", body: "You're on the free plan." });
+      return;
+    }
+
+    if (planId === "enterprise") {
+      notify({ tone: "info", title: "Sales handoff required", body: "Enterprise plans are activated after the contract is attached to billing." });
+      return;
+    }
+
+    startRazorpayCheckout(planId);
   };
 
   return (
@@ -155,7 +222,13 @@ export function BillingPage() {
                     disabled={pendingPlan === plan.id}
                     onClick={() => beginCheckout(plan.id)}
                   >
-                    {isActive ? (isSetup ? "Continue With Plan" : "Active Plan") : paidPlan ? "Start Checkout" : "Use Free Plan"}
+                    {pendingPlan === plan.id
+                      ? "Processing..."
+                      : isActive
+                        ? (isSetup ? "Continue With Plan" : "Active Plan")
+                        : paidPlan
+                          ? `Upgrade to ${plan.name}`
+                          : "Use Free Plan"}
                   </Button>
                 </CardContent>
               </Card>

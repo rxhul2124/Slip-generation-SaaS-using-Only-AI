@@ -124,7 +124,11 @@ export const resources = {
           billing: BillingSubscription | null;
           plans: Record<string, { name: string; monthlySlipLimit: number | string | null; price: number | null; features: string[] }>;
         }>
-      >("/billing")
+      >("/billing"),
+    createOrder: (body: { plan: string }) =>
+      api.post<ApiItem<{ order: { id: string; amount: number; currency: string }; keyId: string }>>("/billing/razorpay/order", body),
+    verifyPayment: (body: { razorpayOrderId: string; razorpayPaymentId: string; razorpaySignature: string; plan: string }) =>
+      api.post<ApiItem<BillingSubscription>>("/billing/razorpay/verify", body)
   },
   auth: {
     updateProfile: (body: { name?: string; email?: string; locale?: string; timezone?: string; avatarUrl?: string }) =>
