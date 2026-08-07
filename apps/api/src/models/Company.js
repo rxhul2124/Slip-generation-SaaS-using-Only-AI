@@ -29,8 +29,40 @@ const companySchema = new mongoose.Schema(
       printerConfigured: { type: Boolean, default: false },
       completedAt: Date
     },
-    plan: { type: String, enum: ["free", "pro", "enterprise"], default: "free" },
-    status: { type: String, enum: ["active", "past_due", "suspended"], default: "active" }
+    plan: { type: String, enum: ["free", "pro", "enterprise"], default: "free", index: true },
+    status: { type: String, enum: ["active", "past_due", "suspended"], default: "active" },
+    billing: {
+      plan: { type: String, enum: ["free", "pro", "enterprise"], default: "free", index: true },
+      subscriptionStatus: {
+        type: String,
+        enum: ["active", "paused", "cancelled", "expired", "pending", "trialing"],
+        default: "active",
+        index: true
+      },
+      paymentStatus: {
+        type: String,
+        enum: ["paid", "pending", "failed", "overdue"],
+        default: "paid",
+        index: true
+      },
+      isTrial: { type: Boolean, default: false },
+      trialStartedAt: Date,
+      trialEndsAt: Date,
+      razorpayCustomerId: String,
+      razorpaySubscriptionId: { type: String, index: true },
+      currentPeriodStart: Date,
+      currentPeriodEnd: Date,
+      cancelAtPeriodEnd: { type: Boolean, default: false },
+      lastPaymentDate: Date,
+      nextBillingDate: Date,
+      usage: {
+        slipsThisMonth: { type: Number, default: 0 },
+        lastResetPeriod: { type: String, default: "" }, // Format: "YYYY-MM"
+        templates: { type: Number, default: 0 },
+        customers: { type: Number, default: 0 },
+        teamMembers: { type: Number, default: 1 }
+      }
+    }
   },
   { timestamps: true }
 );

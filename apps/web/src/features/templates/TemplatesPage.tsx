@@ -67,7 +67,7 @@ export function TemplatesPage() {
   }, [localTemplates, templates, isLoading]);
   const customTemplateCount = templateOptions.filter((template) => !["Small Template", "Medium Template"].includes(template.name)).length;
   const customTemplateLimit = limitsFor(plan).customTemplates;
-  const customTemplateLocked = customTemplateLimit !== Infinity && customTemplateCount >= customTemplateLimit;
+  const customTemplateLocked = customTemplateLimit !== null && customTemplateLimit !== undefined && customTemplateCount >= customTemplateLimit;
 
   useEffect(() => {
     const refresh = () => setLocalTemplates(readLocalTemplates());

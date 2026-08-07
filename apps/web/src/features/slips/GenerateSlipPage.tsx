@@ -196,7 +196,7 @@ export function GenerateSlipPage() {
   const selectedTemplate = templateOptions.find((item) => item._id === templateId);
   const slipTypeDefinition = getSlipTypeDefinition(slipType);
   const slipLimit = limitsFor(company?.plan).slipsPerMonth;
-  const slipLimitReached = slipLimit !== Infinity && (slips.data?.data?.length || 0) >= slipLimit;
+  const slipLimitReached = slipLimit !== null && slipLimit !== undefined && (slips.data?.data?.length || 0) >= slipLimit;
   const canCreateSlip = Boolean(selectedCustomer && selectedProduct && selectedTemplate && quantity > 0 && !slipLimitReached);
   const weightPerPiece = selectedProduct?.weight?.value || 0;
   const totalWeightValue = Number((weightPerPiece * quantity).toFixed(3));

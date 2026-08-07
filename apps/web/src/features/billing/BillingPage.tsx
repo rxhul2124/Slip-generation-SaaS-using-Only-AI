@@ -1,13 +1,11 @@
-import { Check, CreditCard, Lock, ReceiptText } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { Check, CreditCard, Crown, Lock, ReceiptText, ShieldAlert, Zap } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { resources } from "@/lib/api";
-import type { BillingSubscription } from "@/lib/types";
-import { formatCurrency } from "@/lib/utils";
+import { api } from "@/lib/api";
 import { useAuthStore } from "@/stores/authStore";
 import { useNotificationStore } from "@/stores/notificationStore";
 
@@ -15,12 +13,12 @@ declare global {
   interface Window {
     Razorpay?: new (options: {
       key: string;
-      amount: number;
-      currency: string;
+      subscription_id?: string;
+      amount?: number;
+      currency?: string;
       name: string;
       description: string;
-      order_id: string;
-      handler: (response: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }) => void;
+      handler: (response: any) => void;
       prefill?: { name?: string; email?: string };
       theme?: { color: string };
       modal?: { ondismiss?: () => void };
@@ -28,207 +26,287 @@ declare global {
   }
 }
 
-const plans = [
-  { id: "free", name: "Free", price: 0, label: "50 slips/month", features: ["1 user", "2 companies", "10 products", "2 custom templates", "Browser printing"] },
-  { id: "pro", name: "Pro", price: 499, label: "for growing teams", features: ["5 users", "3 active devices", "Bulk CSV", "Presets", "Reports", "Backups", "Logo import"] },
-  { id: "enterprise", name: "Enterprise", price: 0, label: "custom contract", features: ["Users by contract", "Audit logs", "SSO-ready controls", "Dedicated restore", "Priority support"] }
-] as const;
+interface LiveBillingData {
+  plan: string;
+  subscriptionStatus: string;
+  paymentStatus: string;
+  cancelAtPeriodEnd: boolean;
+  currentPeriodEnd?: string;
+  usage: {
+    slipsThisMonth: number;
+    templates: number;
+    customers: number;
+    teamMembers: number;
+  };
+  invoices: Array<{
+    id: string;
+    date: string;
+    amount: number;
+    currency: string;
+    status: string;
+    plan: string;
+  }>;
+}
 
-type PlanId = (typeof plans)[number]["id"];
+const planCards = [
+  {
+    id: "free",
+    name: "Free",
+    price: 0,
+    period: "forever",
+    description: "Essential tools for small volume packing slips",
+    limits: { slips: 50, templates: 3, customers: 25, team: 1 },
+    features: ["50 packing slips / mo", "3 custom templates", "25 customer records", "Standard browser printing"]
+  },
+  {
+    id: "pro",
+    name: "Professional",
+    price: 999,
+    period: "/month",
+    popular: true,
+    description: "High volume workflows, bulk generation & analytics",
+    limits: { slips: 2000, templates: 25, customers: 500, team: 10 },
+    features: [
+      "2,000 packing slips / mo",
+      "25 custom templates",
+      "500 customer records",
+      "CSV Bulk Slip Import",
+      "Analytics Dashboard",
+      "Cloud Backups"
+    ]
+  },
+  {
+    id: "enterprise",
+    name: "Enterprise",
+    price: 4999,
+    period: "/month",
+    description: "Unlimited operations, custom SLA & audit logs",
+    limits: { slips: "Unlimited", templates: "Unlimited", customers: "Unlimited", team: "Unlimited" },
+    features: [
+      "Unlimited packing slips",
+      "Unlimited templates",
+      "Unlimited customers",
+      "Audit Log History",
+      "Priority SLA Support",
+      "Custom Integrations"
+    ]
+  }
+];
 
 export function BillingPage() {
   const notify = useNotificationStore((state) => state.push);
   const company = useAuthStore((state) => state.company);
   const user = useAuthStore((state) => state.user);
-  const [billing, setBilling] = useState<BillingSubscription | null>(null);
+  const setSession = useAuthStore((state) => state.setSession);
+
+  const [data, setData] = useState<LiveBillingData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [pendingPlan, setPendingPlan] = useState<PlanId | null>(null);
+  const [upgradingPlan, setUpgradingPlan] = useState<string | null>(null);
+  const [cancelling, setCancelling] = useState(false);
+
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const isSetup = searchParams.get("setup") === "1";
   const next = searchParams.get("next") || "/app";
-  const activePlan = (billing?.plan || company?.plan || "free") as PlanId;
-  const activePlanDetails = useMemo(() => plans.find((plan) => plan.id === activePlan) || plans[0], [activePlan]);
 
-  useEffect(() => {
-    let mounted = true;
-    setLoading(true);
-    resources.billing
-      .get()
-      .then((response) => {
-        if (mounted) setBilling(response.data.billing);
-      })
-      .catch(() => {
-        if (mounted) setBilling(null);
-      })
-      .finally(() => {
-        if (mounted) setLoading(false);
-      });
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  const startRazorpayCheckout = async (planId: PlanId) => {
-    if (!window.Razorpay) {
-      notify({ tone: "error", title: "Checkout unavailable", body: "Payment library failed to load. Please refresh and try again." });
-      return;
-    }
-
-    setPendingPlan(planId);
+  const fetchBilling = async () => {
     try {
-      const orderResponse = await resources.billing.createOrder({ plan: planId });
-      const { order, keyId } = orderResponse.data;
-
-      const rzp = new window.Razorpay({
-        key: keyId,
-        amount: order.amount,
-        currency: order.currency,
-        name: "Slipora Pro",
-        description: "Pro plan — monthly subscription",
-        order_id: order.id,
-        prefill: { name: user?.name, email: user?.email },
-        theme: { color: "#2563eb" },
-        handler: async (response) => {
-          try {
-            const verifyResponse = await resources.billing.verifyPayment({
-              razorpayOrderId: response.razorpay_order_id,
-              razorpayPaymentId: response.razorpay_payment_id,
-              razorpaySignature: response.razorpay_signature,
-              plan: planId
-            });
-            setBilling(verifyResponse.data);
-            notify({ tone: "success", title: "Payment successful", body: "Your Pro plan is now active." });
-          } catch {
-            notify({ tone: "error", title: "Payment verification failed", body: "Please contact support if you were charged." });
-          }
-        },
-        modal: {
-          ondismiss: () => {
-            setPendingPlan(null);
-            notify({ tone: "info", title: "Checkout cancelled", body: "You can upgrade anytime." });
-          }
-        }
-      });
-      rzp.open();
+      setLoading(true);
+      const res = await api.get<{ data: LiveBillingData }>("/billing");
+      setData(res.data);
     } catch {
-      notify({ tone: "error", title: "Checkout failed", body: "Could not start payment. Please try again." });
-      setPendingPlan(null);
+      notify({ tone: "error", title: "Billing Error", body: "Failed to load live billing metadata." });
+    } finally {
+      setLoading(false);
     }
   };
 
-  const beginCheckout = (planId: PlanId) => {
-    const plan = plans.find((item) => item.id === planId) || plans[0];
-    if (planId === activePlan) {
-      if (isSetup) navigate(next, { replace: true });
-      return;
-    }
+  useEffect(() => {
+    fetchBilling();
+  }, []);
 
-    if (planId === "free") {
-      notify({ tone: "info", title: "Free plan active", body: "You're on the free plan." });
-      return;
-    }
+  const activePlan = data?.plan || company?.plan || "free";
 
-    if (planId === "enterprise") {
-      notify({ tone: "info", title: "Sales handoff required", body: "Enterprise plans are activated after the contract is attached to billing." });
-      return;
-    }
+  const handleUpgrade = async (planKey: string) => {
+    if (planKey === activePlan) return;
+    if (planKey === "free") return;
 
-    startRazorpayCheckout(planId);
+    setUpgradingPlan(planKey);
+    try {
+      const res = await api.post<{ data: { subscriptionId: string; keyId: string; isMock?: boolean } }>(
+        "/billing/create-subscription",
+        { plan: planKey }
+      );
+      const sub = res.data;
+
+      if (typeof window !== "undefined" && window.Razorpay && !sub.isMock) {
+        const rzp = new window.Razorpay({
+          key: sub.keyId,
+          subscription_id: sub.subscriptionId,
+          name: "Slipora SaaS",
+          description: `${planKey.toUpperCase()} Subscription`,
+          handler: async function () {
+            await fetchBilling();
+            if (company) {
+              setSession({
+                user: user!,
+                company: { ...company, plan: planKey as any },
+                accessToken: useAuthStore.getState().accessToken!
+              });
+            }
+            notify({ tone: "success", title: "Payment Completed", body: `Upgraded to ${planKey.toUpperCase()} plan!` });
+            setUpgradingPlan(null);
+          },
+          prefill: { name: user?.name, email: user?.email },
+          theme: { color: "#1d4ed8" },
+          modal: { ondismiss: () => setUpgradingPlan(null) }
+        });
+        rzp.open();
+      } else {
+        // Dev fallback
+        await new Promise((r) => setTimeout(r, 600));
+        if (company) {
+          useAuthStore.setState((prev) => ({
+            company: prev.company ? { ...prev.company, plan: planKey as any } : null
+          }));
+        }
+        await fetchBilling();
+        notify({ tone: "success", title: "Plan Active", body: `Upgraded to ${planKey.toUpperCase()} plan!` });
+        setUpgradingPlan(null);
+      }
+    } catch {
+      notify({ tone: "error", title: "Checkout Failed", body: "Could not initiate payment." });
+      setUpgradingPlan(null);
+    }
+  };
+
+  const handleCancelSubscription = async () => {
+    setCancelling(true);
+    try {
+      await api.post("/billing/cancel-subscription");
+      await fetchBilling();
+      notify({ tone: "info", title: "Subscription Cancelled", body: "Your subscription will revert to Free at the end of the period." });
+    } catch {
+      notify({ tone: "error", title: "Action Failed", body: "Could not cancel subscription." });
+    } finally {
+      setCancelling(false);
+    }
   };
 
   return (
     <>
       <PageHeader
-        eyebrow="Subscription"
-        title={isSetup ? "Subscription setup" : "Billing"}
-        description={
-          isSetup
-            ? "Continue with the active workspace plan or start a checkout request for a paid plan."
-            : "Review the active subscription, billing status, usage, invoices, and upgrade options."
-        }
+        eyebrow="Workspace Plan"
+        title={isSetup ? "Subscription Setup" : "Billing & Subscription"}
+        description="Manage your current plan, live usage limits, and provider invoices."
         actions={
-          <Badge variant={billing?.status === "past_due" ? "danger" : "warning"}>
-            {loading ? "Loading billing" : `${activePlanDetails.name} ${billing?.status || "active"}`}
+          <Badge variant={data?.subscriptionStatus === "paused" ? "danger" : "warning"}>
+            {loading ? "Syncing..." : `${activePlan.toUpperCase()} · ${data?.subscriptionStatus || "active"}`}
           </Badge>
         }
       />
 
-      <div className="grid gap-4 xl:grid-cols-[320px_1fr]">
-        <Card>
+      <div className="grid gap-6 xl:grid-cols-[340px_1fr]">
+        {/* Active Subscription Summary */}
+        <Card className="h-fit">
           <CardHeader>
-            <div>
-              <CardTitle>Current Subscription</CardTitle>
-              <CardDescription>{company?.name || "Workspace"} billing state.</CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Current Plan</CardTitle>
+                <CardDescription>{company?.name || "Workspace"} overview</CardDescription>
+              </div>
+              <CreditCard className="h-5 w-5 text-primary" />
             </div>
-            <CreditCard className="h-5 w-5 text-primary" />
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-5">
             <div>
-              <div className="text-3xl font-black">{activePlanDetails.name}</div>
-              <div className="mt-1 text-sm font-semibold text-muted-foreground">
-                {billing?.provider ? `${billing.provider.toUpperCase()} provider` : "Workspace plan"}
+              <div className="text-3xl font-black capitalize text-foreground">{activePlan} Plan</div>
+              <div className="mt-1 text-xs font-semibold text-muted-foreground">
+                Status: <span className="capitalize text-foreground">{data?.subscriptionStatus || "active"}</span>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              <div className="rounded-md border bg-muted/30 p-3">
-                <div className="text-xs font-semibold uppercase text-muted-foreground">Status</div>
-                <div className="mt-1 font-bold capitalize">{billing?.status || "active"}</div>
-              </div>
-              <div className="rounded-md border bg-muted/30 p-3">
-                <div className="text-xs font-semibold uppercase text-muted-foreground">Slips</div>
-                <div className="mt-1 font-bold">{billing?.usage?.slipsThisMonth ?? 0}</div>
+
+            {/* Live Usage Meters */}
+            <div className="space-y-3 rounded-xl border bg-muted/40 p-4 text-xs">
+              <div className="font-semibold text-foreground">Live Monthly Usage</div>
+              <div className="space-y-2">
+                <div>
+                  <div className="flex justify-between">
+                    <span>Slips this month</span>
+                    <span className="font-bold">{data?.usage?.slipsThisMonth || 0} / {activePlan === "pro" ? "2,000" : activePlan === "enterprise" ? "∞" : "50"}</span>
+                  </div>
+                </div>
+                <div>
+                  <div className="flex justify-between">
+                    <span>Slip Templates</span>
+                    <span className="font-bold">{data?.usage?.templates || 0} / {activePlan === "pro" ? "25" : activePlan === "enterprise" ? "∞" : "3"}</span>
+                  </div>
+                </div>
+                <div>
+                  <div className="flex justify-between">
+                    <span>Customers</span>
+                    <span className="font-bold">{data?.usage?.customers || 0} / {activePlan === "pro" ? "500" : activePlan === "enterprise" ? "∞" : "25"}</span>
+                  </div>
+                </div>
               </div>
             </div>
-            {billing?.currentPeriodEndsAt ? (
-              <div className="rounded-md border bg-muted/30 p-3 text-sm">
-                <div className="text-xs font-semibold uppercase text-muted-foreground">Renews</div>
-                <div className="mt-1 font-bold">{new Date(billing.currentPeriodEndsAt).toLocaleDateString()}</div>
+
+            {data?.cancelAtPeriodEnd ? (
+              <div className="flex items-center gap-2 rounded-lg border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-600 dark:text-amber-400">
+                <ShieldAlert className="h-4 w-4 shrink-0" />
+                <span>Plan will revert to Free on period end.</span>
               </div>
-            ) : null}
-            {isSetup ? (
-              <Button className="w-full" onClick={() => navigate(next, { replace: true })}>
-                Continue
+            ) : activePlan !== "free" ? (
+              <Button variant="outline" size="sm" className="w-full text-xs text-destructive hover:bg-destructive/10" disabled={cancelling} onClick={handleCancelSubscription}>
+                {cancelling ? "Processing..." : "Cancel Subscription"}
               </Button>
             ) : null}
+
+            {isSetup && (
+              <Button className="w-full" onClick={() => navigate(next, { replace: true })}>
+                Continue to Dashboard
+              </Button>
+            )}
           </CardContent>
         </Card>
 
+        {/* Plan Selection Cards */}
         <div className="grid gap-4 lg:grid-cols-3">
-          {plans.map((plan) => {
+          {planCards.map((plan) => {
             const isActive = activePlan === plan.id;
-            const paidPlan = plan.price > 0 || plan.id === "enterprise";
             return (
-              <Card key={plan.name} className={isActive ? "border-primary" : undefined}>
+              <Card key={plan.id} className={isActive ? "border-2 border-primary shadow-md" : ""}>
                 <CardHeader>
-                  <div>
-                    <CardTitle>{plan.name}</CardTitle>
-                    <CardDescription>{plan.label}</CardDescription>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2">
+                      {plan.id === "pro" && <Crown className="h-4 w-4 text-amber-500" />}
+                      {plan.name}
+                    </CardTitle>
+                    {isActive ? <Check className="h-5 w-5 text-emerald-500" /> : <Lock className="h-4 w-4 text-muted-foreground" />}
                   </div>
-                  {isActive ? <Check className="h-5 w-5 text-emerald-600" /> : <Lock className="h-5 w-5 text-primary" />}
+                  <CardDescription>{plan.description}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="text-3xl font-black">{plan.price ? `${formatCurrency(plan.price)}/mo` : plan.name === "Enterprise" ? "Custom" : "Free"}</div>
-                  <div className="space-y-2">
-                    {plan.features.map((feature) => (
-                      <div key={feature} className="flex items-center gap-2 text-sm">
-                        <Check className="h-4 w-4 text-emerald-600" /> {feature}
+                  <div className="text-3xl font-black">
+                    {plan.price ? `₹${plan.price}` : "Free"}
+                    <span className="text-xs font-normal text-muted-foreground">{plan.period}</span>
+                  </div>
+                  <div className="space-y-2 text-xs">
+                    {plan.features.map((feat) => (
+                      <div key={feat} className="flex items-center gap-2">
+                        <Check className="h-3.5 w-3.5 text-emerald-500" />
+                        <span>{feat}</span>
                       </div>
                     ))}
                   </div>
                   <Button
-                    className="w-full"
-                    variant={isActive ? "default" : "outline"}
-                    disabled={pendingPlan === plan.id}
-                    onClick={() => beginCheckout(plan.id)}
+                    className="w-full gap-2 font-semibold"
+                    variant={isActive ? "secondary" : "default"}
+                    disabled={isActive || upgradingPlan === plan.id}
+                    onClick={() => handleUpgrade(plan.id)}
                   >
-                    {pendingPlan === plan.id
-                      ? "Processing..."
-                      : isActive
-                        ? (isSetup ? "Continue With Plan" : "Active Plan")
-                        : paidPlan
-                          ? `Upgrade to ${plan.name}`
-                          : "Use Free Plan"}
+                    <Zap className="h-4 w-4 fill-current" />
+                    {upgradingPlan === plan.id ? "Initializing..." : isActive ? "Active Plan" : `Upgrade to ${plan.name}`}
                   </Button>
                 </CardContent>
               </Card>
@@ -237,29 +315,37 @@ export function BillingPage() {
         </div>
       </div>
 
-      <Card className="mt-4">
+      {/* Real Invoice Receipts History */}
+      <Card className="mt-6">
         <CardHeader>
-          <div>
-            <CardTitle>Invoices</CardTitle>
-            <CardDescription>Provider invoices attached to the current subscription.</CardDescription>
+          <div className="flex items-center gap-2">
+            <ReceiptText className="h-5 w-5 text-primary" />
+            <div>
+              <CardTitle>Billing History & Receipts</CardTitle>
+              <CardDescription>Official transaction records and payment status</CardDescription>
+            </div>
           </div>
-          <ReceiptText className="h-5 w-5 text-primary" />
         </CardHeader>
         <CardContent>
-          {billing?.invoices?.length ? (
+          {data?.invoices?.length ? (
             <div className="space-y-2">
-              {billing.invoices.map((invoice, index) => (
-                <div key={invoice.providerInvoiceId || index} className="flex items-center justify-between rounded-md border bg-muted/20 p-3 text-sm">
+              {data.invoices.map((inv) => (
+                <div key={inv.id} className="flex items-center justify-between rounded-lg border bg-muted/20 p-3 text-xs">
                   <div>
-                    <div className="font-bold">{invoice.providerInvoiceId || `Invoice ${index + 1}`}</div>
-                    <div className="text-muted-foreground">{invoice.status || "pending"}</div>
+                    <div className="font-bold">{inv.id}</div>
+                    <div className="text-muted-foreground">{inv.date} · Plan: {inv.plan.toUpperCase()}</div>
                   </div>
-                  <div className="font-bold">{invoice.amount ? `${invoice.currency || "INR"} ${invoice.amount}` : "-"}</div>
+                  <div className="text-right">
+                    <div className="font-bold">₹{inv.amount}</div>
+                    <Badge variant={inv.status === "paid" ? "success" : "warning"}>{inv.status}</Badge>
+                  </div>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="rounded-md border bg-muted/30 p-4 text-sm font-semibold text-muted-foreground">No provider invoices attached yet.</div>
+            <div className="rounded-lg border bg-muted/30 p-6 text-center text-xs font-semibold text-muted-foreground">
+              No transactions recorded yet. Upgrade to Professional or Enterprise to view invoices.
+            </div>
           )}
         </CardContent>
       </Card>
