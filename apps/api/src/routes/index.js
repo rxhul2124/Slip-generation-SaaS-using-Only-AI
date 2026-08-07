@@ -12,6 +12,7 @@ import { billingRouter } from "./billing.routes.js";
 import { settingsRouter } from "./settings.routes.js";
 import { backupRouter } from "./backup.routes.js";
 import { searchRouter } from "./search.routes.js";
+import { adminRouter } from "./admin.routes.js";
 
 export const router = Router();
 
@@ -29,3 +30,4 @@ router.use("/billing", billingRouter);
 router.use("/settings", settingsRouter);
 router.use("/backups", backupRouter);
 router.use("/search", searchRouter);
+router.use("/admin", adminRouter);
