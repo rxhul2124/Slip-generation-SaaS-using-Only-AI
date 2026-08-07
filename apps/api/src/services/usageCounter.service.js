@@ -1,6 +1,6 @@
 import { Company } from "../models/Company.js";
 import { Customer } from "../models/Customer.js";
-import { Template } from "../models/Template.js";
+import { SlipTemplate } from "../models/SlipTemplate.js";
 import { User } from "../models/User.js";
 import { getPlanConfig, isWithinLimit } from "../config/plans.config.js";
 
@@ -92,7 +92,7 @@ export const usageCounterService = {
    */
   async syncCounters(companyId) {
     const [templatesCount, customersCount, teamCount] = await Promise.all([
-      Template.countDocuments({ company: companyId }),
+      SlipTemplate.countDocuments({ company: companyId }),
       Customer.countDocuments({ company: companyId }),
       User.countDocuments({ company: companyId })
     ]);
