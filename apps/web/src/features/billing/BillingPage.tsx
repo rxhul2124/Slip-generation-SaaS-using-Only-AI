@@ -127,25 +127,78 @@ export function BillingPage() {
 
   const activePlan = data?.plan || company?.plan || "free";
 
+  const loadRazorpayScript = (): Promise<boolean> => {
+    return new Promise((resolve) => {
+      if (window.Razorpay) return resolve(true);
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
   const handleUpgrade = async (planKey: string) => {
     if (planKey === activePlan) return;
     if (planKey === "free") return;
 
     setUpgradingPlan(planKey);
     try {
-      const res = await api.post<{ data: { subscriptionId: string; keyId: string; isMock?: boolean } }>(
-        "/billing/create-subscription",
-        { plan: planKey }
-      );
+      const res = await api.post<{
+        data: {
+          subscriptionId?: string;
+          orderId?: string;
+          keyId: string;
+          amount: number;
+          currency: string;
+          type?: string;
+          isMock?: boolean;
+        };
+      }>("/billing/create-subscription", { plan: planKey });
+      
       const sub = res.data;
 
-      if (typeof window !== "undefined" && window.Razorpay && !sub.isMock) {
-        const rzp = new window.Razorpay({
-          key: sub.keyId,
-          subscription_id: sub.subscriptionId,
-          name: "Slipora SaaS",
-          description: `${planKey.toUpperCase()} Subscription`,
-          handler: async function () {
+      if (sub.isMock) {
+        notify({
+          tone: "info",
+          title: "Razorpay Keys Missing",
+          body: "RAZORPAY_KEY_ID & RAZORPAY_KEY_SECRET are not set in Render environment variables. Activated plan in Demo Mode."
+        });
+        if (company) {
+          useAuthStore.setState((prev) => ({
+            company: prev.company ? { ...prev.company, plan: planKey as any } : null
+          }));
+        }
+        await fetchBilling();
+        setUpgradingPlan(null);
+        return;
+      }
+
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded || !window.Razorpay) {
+        notify({ tone: "error", title: "Checkout Error", body: "Failed to load Razorpay SDK. Please check your internet connection or adblocker." });
+        setUpgradingPlan(null);
+        return;
+      }
+
+      const options: any = {
+        key: sub.keyId,
+        name: "Slipora SaaS",
+        description: `${planKey.toUpperCase()} Plan Subscription`,
+        amount: sub.amount,
+        currency: sub.currency || "INR",
+        prefill: { name: user?.name, email: user?.email },
+        theme: { color: "#0f766e" },
+        handler: async function (response: any) {
+          try {
+            if (sub.orderId) {
+              await api.post("/billing/razorpay/verify", {
+                razorpayOrderId: response.razorpay_order_id || sub.orderId,
+                razorpayPaymentId: response.razorpay_payment_id,
+                razorpaySignature: response.razorpay_signature,
+                plan: planKey
+              });
+            }
             await fetchBilling();
             if (company) {
               setSession({
@@ -154,28 +207,28 @@ export function BillingPage() {
                 accessToken: useAuthStore.getState().accessToken!
               });
             }
-            notify({ tone: "success", title: "Payment Completed", body: `Upgraded to ${planKey.toUpperCase()} plan!` });
+            notify({ tone: "success", title: "Payment Successful!", body: `Your workspace has been upgraded to ${planKey.toUpperCase()}.` });
+          } catch {
+            notify({ tone: "error", title: "Verification Failed", body: "Payment recorded but server verification failed. Please contact support." });
+          } finally {
             setUpgradingPlan(null);
-          },
-          prefill: { name: user?.name, email: user?.email },
-          theme: { color: "#1d4ed8" },
-          modal: { ondismiss: () => setUpgradingPlan(null) }
-        });
-        rzp.open();
-      } else {
-        // Dev fallback
-        await new Promise((r) => setTimeout(r, 600));
-        if (company) {
-          useAuthStore.setState((prev) => ({
-            company: prev.company ? { ...prev.company, plan: planKey as any } : null
-          }));
+          }
+        },
+        modal: {
+          ondismiss: () => setUpgradingPlan(null)
         }
-        await fetchBilling();
-        notify({ tone: "success", title: "Plan Active", body: `Upgraded to ${planKey.toUpperCase()} plan!` });
-        setUpgradingPlan(null);
+      };
+
+      if (sub.subscriptionId) {
+        options.subscription_id = sub.subscriptionId;
+      } else if (sub.orderId) {
+        options.order_id = sub.orderId;
       }
+
+      const rzp = new window.Razorpay(options);
+      rzp.open();
     } catch {
-      notify({ tone: "error", title: "Checkout Failed", body: "Could not initiate payment." });
+      notify({ tone: "error", title: "Checkout Failed", body: "Could not initiate Razorpay payment session." });
       setUpgradingPlan(null);
     }
   };

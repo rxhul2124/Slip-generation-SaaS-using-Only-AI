@@ -12,7 +12,7 @@ if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
 
 export const subscriptionService = {
   /**
-   * Create Razorpay Subscription or Mock fallback
+   * Create Razorpay Subscription or Order fallback for live checkout popup
    */
   async createSubscription(companyId, planKey) {
     const company = await Company.findById(companyId);
@@ -29,8 +29,11 @@ export const subscriptionService = {
       throw err;
     }
 
-    // Razorpay Integration
-    if (razorpayInstance && planConfig.razorpayPlanId && !planConfig.razorpayPlanId.endsWith("_default")) {
+    const keyId = process.env.RAZORPAY_KEY_ID;
+    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+
+    // 1. Try Razorpay Subscription if plan_id is configured
+    if (razorpayInstance && planConfig.razorpayPlanId && planConfig.razorpayPlanId.startsWith("plan_")) {
       try {
         const subscription = await razorpayInstance.subscriptions.create({
           plan_id: planConfig.razorpayPlanId,
@@ -41,21 +44,45 @@ export const subscriptionService = {
 
         return {
           subscriptionId: subscription.id,
-          keyId: process.env.RAZORPAY_KEY_ID,
+          keyId,
           planKey,
           amount: planConfig.price * 100, // paise
-          currency: "INR"
+          currency: "INR",
+          type: "subscription"
         };
       } catch (err) {
-        console.error("Razorpay subscription creation error:", err);
+        console.error("Razorpay subscription creation failed, falling back to Order:", err);
       }
     }
 
-    // Dev/Mock Fallback when live keys are not configured
+    // 2. Try Razorpay Order if keys are present (works without pre-created Plan IDs!)
+    if (razorpayInstance && keyId && keySecret) {
+      try {
+        const order = await razorpayInstance.orders.create({
+          amount: planConfig.price * 100, // in paise
+          currency: "INR",
+          receipt: `rcpt_${companyId.toString().substr(-8)}_${Date.now().toString().substr(-6)}`,
+          notes: { companyId: companyId.toString(), planKey }
+        });
+
+        return {
+          orderId: order.id,
+          keyId,
+          planKey,
+          amount: planConfig.price * 100,
+          currency: "INR",
+          type: "order"
+        };
+      } catch (err) {
+        console.error("Razorpay order creation failed:", err);
+      }
+    }
+
+    // 3. Dev/Demo Mock Fallback when keys are missing or invalid
     const mockSubscriptionId = `sub_mock_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
     return {
       subscriptionId: mockSubscriptionId,
-      keyId: process.env.RAZORPAY_KEY_ID || "rzp_test_mockKey123",
+      keyId: keyId || "rzp_test_mockKey123",
       planKey,
       amount: planConfig.price * 100,
       currency: "INR",
@@ -77,12 +104,13 @@ export const subscriptionService = {
     const subId = company.billing?.razorpaySubscriptionId;
     if (razorpayInstance && subId && !subId.startsWith("sub_mock_")) {
       try {
-        await razorpayInstance.subscriptions.cancel(subId, true); // cancel at period end
+        await razorpayInstance.subscriptions.cancel(subId, true);
       } catch (err) {
         console.error("Razorpay subscription cancellation error:", err);
       }
     }
 
+    if (!company.billing) company.billing = {};
     company.billing.cancelAtPeriodEnd = true;
     await company.save();
 
