@@ -15,7 +15,7 @@ export function PageHeader({
   center?: ReactNode;
 }) {
   return (
-    <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <div className="mb-6 md:mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
       <motion.div
         className="flex-1 md:flex-initial min-w-0"
         initial="hidden"
