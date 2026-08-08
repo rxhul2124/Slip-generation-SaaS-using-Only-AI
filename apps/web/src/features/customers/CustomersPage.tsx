@@ -776,8 +776,12 @@ export function CustomersPage() {
                   </div>
                 ) : null}
 
-                <Button className="w-full" type="submit" disabled={createCustomer.isPending || updateCustomer.isPending}>
-                  {companyFormMode === "edit" ? "Update Company" : "Save Company"}
+                <Button className="w-full" type="submit" loading={createCustomer.isPending || updateCustomer.isPending}>
+                  {createCustomer.isPending || updateCustomer.isPending
+                    ? "Saving Company..."
+                    : companyFormMode === "edit"
+                      ? "Update Company"
+                      : "Save Company"}
                 </Button>
               </form>
             </CardContent>

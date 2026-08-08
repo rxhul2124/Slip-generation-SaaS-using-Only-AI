@@ -52,8 +52,8 @@ export function RegisterPage() {
             <Input placeholder="Work email" {...form.register("email")} />
             <Input placeholder="Company name" {...form.register("companyName")} />
             <Input placeholder="Password" type="password" {...form.register("password")} />
-            <Button className="w-full" type="submit">
-              Create Account
+            <Button className="w-full" type="submit" loading={form.formState.isSubmitting}>
+              {form.formState.isSubmitting ? "Creating Account..." : "Create Account"}
             </Button>
           </form>
         </CardContent>

@@ -58,8 +58,8 @@ export function LoginPage() {
                 Forgot password
               </Link>
             </div>
-            <Button className="w-full" type="submit">
-              Login
+            <Button className="w-full" type="submit" loading={form.formState.isSubmitting}>
+              {form.formState.isSubmitting ? "Logging in..." : "Login"}
             </Button>
             <div className="text-center text-sm text-muted-foreground">
               New here?{" "}

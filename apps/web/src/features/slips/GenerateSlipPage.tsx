@@ -402,8 +402,9 @@ export function GenerateSlipPage() {
             <Button variant="outline" onClick={reset}>
               <RotateCcw className="h-4 w-4" /> Reset
             </Button>
-            <Button onClick={() => createSlip.mutate()} disabled={createSlip.isPending || !canCreateSlip}>
-              <Save className="h-4 w-4" /> Create Slip {slipLimitReached ? <UpgradeBadge label="Pro" /> : null}
+            <Button onClick={() => createSlip.mutate()} loading={createSlip.isPending} disabled={!canCreateSlip}>
+              {!createSlip.isPending && <Save className="h-4 w-4" />}
+              {createSlip.isPending ? "Creating..." : "Create Slip"} {slipLimitReached ? <UpgradeBadge label="Pro" /> : null}
             </Button>
           </>
         }

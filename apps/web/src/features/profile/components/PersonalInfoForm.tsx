@@ -93,8 +93,8 @@ export function PersonalInfoForm() {
               exit={{ opacity: 0, height: 0 }}
               className="flex items-center gap-3 border-t border-border/50 pt-4"
             >
-              <Button onClick={handleSave} disabled={saving}>
-                <Save className="h-4 w-4" />
+              <Button onClick={handleSave} loading={saving}>
+                {!saving && <Save className="h-4 w-4" />}
                 {saving ? "Saving…" : "Save Changes"}
               </Button>
               <Button variant="ghost" onClick={handleReset} disabled={saving}>

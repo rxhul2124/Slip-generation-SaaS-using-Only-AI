@@ -18,6 +18,7 @@ export function Topbar() {
   const { data: templateData } = useTemplates();
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -106,13 +107,19 @@ export function Topbar() {
           variant="ghost"
           size="icon"
           aria-label="Logout"
+          loading={isLoggingOut}
           onClick={async () => {
-            await logout();
-            notify({ tone: "success", title: "Signed out", body: "You are back at the main website." });
-            navigate("/");
+            try {
+              setIsLoggingOut(true);
+              await logout();
+              notify({ tone: "success", title: "Signed out", body: "You are back at the main website." });
+              navigate("/");
+            } finally {
+              setIsLoggingOut(false);
+            }
           }}
         >
-          <LogOut className="h-4 w-4" />
+          {!isLoggingOut && <LogOut className="h-4 w-4" />}
         </Button>
         <Link to="/profile" className="flex items-center gap-2 rounded-md border bg-card/70 px-3 py-2 transition hover:bg-muted/60 hover:shadow-sm">
           <UserCircle className="h-5 w-5 text-primary" />
