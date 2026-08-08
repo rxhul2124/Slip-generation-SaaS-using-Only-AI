@@ -73,7 +73,7 @@ export const webhookService = {
                   paymentId: paymentEntity.id || "payment_checkout",
                   previousPlan,
                   newPlan: targetPlanKey,
-                  amount: paymentEntity.amount || (targetPlanKey === "enterprise" ? 499900 : 99900),
+                  amount: paymentEntity.amount || (targetPlanKey === "enterprise" ? 499900 : 69900),
                   currency: "INR",
                   status: "paid",
                   eventType,

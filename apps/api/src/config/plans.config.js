@@ -26,7 +26,7 @@ export const PLANS_CONFIG = {
   pro: {
     key: "pro",
     name: "Professional",
-    price: 999,
+    price: 699,
     currency: "INR",
     period: "/month",
     description: "For growing businesses needing scale and automation",

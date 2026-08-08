@@ -61,7 +61,7 @@ const planCards = [
   {
     id: "pro",
     name: "Professional",
-    price: 999,
+    price: 699,
     period: "/month",
     popular: true,
     description: "High volume workflows, bulk generation & analytics",

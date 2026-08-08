@@ -110,7 +110,7 @@ export function UpgradeModal({
               <Badge variant="warning">Recommended</Badge>
               <span className="font-semibold text-sm">Professional Plan</span>
             </div>
-            <span className="text-lg font-extrabold text-primary">₹999<span className="text-xs font-normal text-muted-foreground">/mo</span></span>
+            <span className="text-lg font-extrabold text-primary">₹699<span className="text-xs font-normal text-muted-foreground">/mo</span></span>
           </div>
 
           <ul className="mt-3 space-y-2 text-xs text-muted-foreground">
@@ -141,7 +141,7 @@ export function UpgradeModal({
             onClick={() => handleUpgradeClick(targetPlan)}
           >
             <Zap className="h-4 w-4 fill-current" />
-            {loading ? "Processing..." : `Upgrade to ${targetPlan === "enterprise" ? "Enterprise (₹4,999/mo)" : "Professional (₹999/mo)"}`}
+            {loading ? "Processing..." : `Upgrade to ${targetPlan === "enterprise" ? "Enterprise (₹4,999/mo)" : "Professional (₹699/mo)"}`}
           </Button>
 
           <Button variant="ghost" size="sm" onClick={onClose} className="w-full text-muted-foreground">

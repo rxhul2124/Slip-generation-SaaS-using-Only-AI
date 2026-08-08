@@ -6,33 +6,30 @@ export const sampleProducts: Product[] = [
     name: "Hex Head Bolt M8 x 40mm Stainless 304",
     partNumber: "HEX-M8-40-SS",
     category: "Fasteners",
-    unitOfMeasure: "NOS",
+    quantityUnit: "NOS",
     barcode: "890123456789",
-    description: "High tensile stainless steel hex head bolt.",
-    unitWeightKg: 0.018,
-    status: "active"
+    notes: "High tensile stainless steel hex head bolt.",
+    weight: { value: 0.018, unit: "KG" }
   },
   {
     _id: "p-nyloc-nut-m8",
     name: "Nyloc Lock Nut M8 Galvanized Class 8",
     partNumber: "NYL-M8-GALV",
     category: "Lock Nuts",
-    unitOfMeasure: "NOS",
+    quantityUnit: "NOS",
     barcode: "890123456790",
-    description: "Self-locking nylon insert nut for high vibration assemblies.",
-    unitWeightKg: 0.009,
-    status: "active"
+    notes: "Self-locking nylon insert nut for high vibration assemblies.",
+    weight: { value: 0.009, unit: "KG" }
   },
   {
     _id: "p-washer-flat-m8",
     name: "Flat Washer M8 Form A Plain Steel",
     partNumber: "WSH-M8-PLN",
     category: "Washers",
-    unitOfMeasure: "KG",
+    quantityUnit: "KG",
     barcode: "890123456791",
-    description: "Heavy duty flat washer for load distribution.",
-    unitWeightKg: 1.0,
-    status: "active"
+    notes: "Heavy duty flat washer for load distribution.",
+    weight: { value: 1.0, unit: "KG" }
   }
 ];
 
@@ -40,24 +37,18 @@ export const sampleCustomers: Customer[] = [
   {
     _id: "c-haridwar-auto",
     name: "Haridwar Auto Components Ltd",
-    code: "HAR-001",
     contactPerson: "Rajesh Sharma",
     email: "dispatch@haridwarauto.example",
     phone: "+91 98765 43210",
-    city: "Haridwar",
-    state: "Uttarakhand",
-    status: "active"
+    shippingAddress: { city: "Haridwar", state: "Uttarakhand" }
   },
   {
     _id: "c-pune-industrial",
     name: "Pune Precision Engineering",
-    code: "PUN-004",
     contactPerson: "Anish Kulkarni",
     email: "purchasing@puneeng.example",
     phone: "+91 98123 45678",
-    city: "Pune",
-    state: "Maharashtra",
-    status: "active"
+    shippingAddress: { city: "Pune", state: "Maharashtra" }
   }
 ];
 
@@ -66,7 +57,7 @@ export const sampleTemplates: SlipTemplate[] = [
     _id: "t-small-neon",
     name: "Cyberpunk Neon Tag (Small)",
     format: "custom",
-    renderer: "canvas",
+    renderer: "industrial",
     units: "mm",
     width: 62,
     height: 38,
@@ -86,7 +77,7 @@ export const sampleTemplates: SlipTemplate[] = [
         id: "header-bg",
         type: "text",
         label: "Header Bar",
-        content: "FAST TECH FASTENERS",
+        value: "FAST TECH FASTENERS",
         x: 2,
         y: 2,
         width: 58,
@@ -158,7 +149,7 @@ export const sampleTemplates: SlipTemplate[] = [
     _id: "t-medium-luxury",
     name: "Executive Gold Manifest (Medium)",
     format: "custom",
-    renderer: "canvas",
+    renderer: "industrial",
     units: "mm",
     width: 90,
     height: 52,
@@ -178,7 +169,7 @@ export const sampleTemplates: SlipTemplate[] = [
         id: "brand-banner",
         type: "text",
         label: "Company Banner",
-        content: "FAST TECH FASTENERS · DISPATCH MANIFEST",
+        value: "FAST TECH FASTENERS · DISPATCH MANIFEST",
         x: 3,
         y: 3,
         width: 84,
@@ -248,7 +239,7 @@ export const sampleTemplates: SlipTemplate[] = [
         id: "signature-box",
         type: "text",
         label: "Inspector Stamp",
-        content: "APPROVED SLIP",
+        value: "APPROVED SLIP",
         x: 73,
         y: 33,
         width: 14,
@@ -320,6 +311,9 @@ export const sampleSlips: GeneratedSlip[] = [
     destination: "Haridwar Dispatch",
     notes: "Check count before dispatch.",
     barcodeValue: sampleProducts[0].barcode,
+    status: "generated",
+    printedCount: 1,
+    exportedCount: 0,
     createdAt: new Date().toISOString()
   }
 ];

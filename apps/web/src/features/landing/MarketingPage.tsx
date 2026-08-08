@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 
 const pricing: Array<{ name: string; price: string; features: string[] }> = [
   { name: "Free", price: "Free", features: ["50 slips/month", "1 user", "1 active session", "2 companies", "10 products", "2 custom templates"] },
-  { name: "Pro", price: "Rs 699/mo", features: ["5 users", "3 active sessions", "Bulk CSV", "Presets", "Reports", "Backups", "Logo import"] },
+  { name: "Pro", price: "₹699/mo", features: ["5 users", "3 active sessions", "Bulk CSV", "Presets", "Reports", "Backups", "Logo import"] },
   { name: "Enterprise", price: "Custom", features: ["Users by contract", "Enterprise session policy", "Audit logs", "Priority support", "Dedicated restore help"] }
 ];
 

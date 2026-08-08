@@ -38,7 +38,7 @@ const templates = [
 
 const plans = [
   { name: "Free", price: "Free", label: "50 slips/month", features: ["1 user", "1 active session", "2 companies", "10 products", "2 custom templates", "Browser printing"] },
-  { name: "Pro", price: "Rs 699/mo", label: "Most popular", featured: true, features: ["5 users", "3 active sessions", "Bulk CSV", "Presets", "Reports", "Backups", "Logo import"] },
+  { name: "Pro", price: "₹699/mo", label: "Most popular", featured: true, features: ["5 users", "3 active sessions", "Bulk CSV", "Presets", "Reports", "Backups", "Logo import"] },
   { name: "Enterprise", price: "Custom", label: "For larger teams", features: ["Users by contract", "Enterprise session policy", "Audit logs", "Priority support", "Dedicated restore help", "Custom rollout"] }
 ];
 

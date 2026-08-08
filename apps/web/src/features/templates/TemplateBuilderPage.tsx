@@ -391,6 +391,7 @@ export function TemplateBuilderPage() {
   const [referenceImage, setReferenceImage] = useState<{ src: string; name: string; opacity: number } | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const notify = useNotificationStore((state) => state.push);
   const selected = useMemo(() => template.elements.find((element) => element.id === selectedId), [template, selectedId]);
   const livePreviewSlip = useMemo(() => placeholderSlip(template), [template]);
