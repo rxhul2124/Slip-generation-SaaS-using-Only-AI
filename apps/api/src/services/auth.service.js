@@ -60,7 +60,7 @@ async function issueTokens(user, companyId, req, rememberMe = false, companyPlan
 export function defaultSlipTemplates(companyId, userId) {
   const base = {
     company: companyId,
-    renderer: "industrial",
+    renderer: "template",
     format: "custom",
     units: "mm",
     orientation: "landscape",
@@ -84,9 +84,9 @@ export function defaultSlipTemplates(companyId, userId) {
       height: 38,
       spacing: 3,
       fontSize: 7,
-      renderer: "canvas",
+      renderer: "template",
       elements: [
-        { id: "header-bg", type: "text", label: "Header Bar", content: "FAST TECH FASTENERS", x: 2, y: 2, width: 58, height: 6, zIndex: 1, style: { fontSize: 8, fontWeight: 800, highlight: true, backgroundColor: "#0f172a", color: "#10b981", alignment: "center" } },
+        { id: "header-bg", type: "text", label: "Header Bar", value: "FAST TECH FASTENERS", x: 2, y: 2, width: 58, height: 6, zIndex: 1, style: { fontSize: 8, fontWeight: 800, highlight: true, backgroundColor: "#0f172a", color: "#10b981", alignment: "center" } },
         { id: "product-title", type: "field", label: "Product Name", field: "product.name", x: 2, y: 9, width: 58, height: 8, zIndex: 2, style: { fontSize: 9, fontWeight: 800, color: "#000000" } },
         { id: "qty-pill", type: "field", label: "Quantity", field: "quantity", x: 2, y: 18, width: 28, height: 7, zIndex: 3, style: { fontSize: 8, fontWeight: 700, highlight: true, backgroundColor: "#ecfdf5", color: "#047857", alignment: "center" } },
         { id: "weight-pill", type: "field", label: "Weight", field: "displayWeight.value", x: 32, y: 18, width: 28, height: 7, zIndex: 4, style: { fontSize: 8, fontWeight: 700, highlight: true, backgroundColor: "#f0fdf4", color: "#15803d", alignment: "center" } },
@@ -102,15 +102,15 @@ export function defaultSlipTemplates(companyId, userId) {
       height: 52,
       spacing: 4,
       fontSize: 9,
-      renderer: "canvas",
+      renderer: "template",
       elements: [
-        { id: "brand-banner", type: "text", label: "Company Banner", content: "FAST TECH FASTENERS · DISPATCH MANIFEST", x: 3, y: 3, width: 84, height: 8, zIndex: 1, style: { fontSize: 10, fontWeight: 800, highlight: true, backgroundColor: "#1e1b4b", color: "#fbbf24", alignment: "center" } },
+        { id: "brand-banner", type: "text", label: "Company Banner", value: "FAST TECH FASTENERS · DISPATCH MANIFEST", x: 3, y: 3, width: 84, height: 8, zIndex: 1, style: { fontSize: 10, fontWeight: 800, highlight: true, backgroundColor: "#1e1b4b", color: "#fbbf24", alignment: "center" } },
         { id: "customer-badge", type: "field", label: "Destination Customer", field: "customer.name", x: 3, y: 12, width: 54, height: 9, zIndex: 2, style: { fontSize: 9, fontWeight: 700, color: "#1e293b" } },
         { id: "serial-badge", type: "field", label: "Serial Number", field: "serialNumber", x: 59, y: 12, width: 28, height: 9, zIndex: 3, style: { fontSize: 8, fontWeight: 800, highlight: true, backgroundColor: "#fef3c7", color: "#92400e", alignment: "center" } },
         { id: "product-box", type: "field", label: "Product Name", field: "product.name", x: 3, y: 22, width: 84, height: 10, zIndex: 4, style: { fontSize: 10, fontWeight: 800, color: "#0f172a" } },
         { id: "barcode-main", type: "barcode", label: "Barcode", field: "serialNumber", x: 3, y: 33, width: 50, height: 16, zIndex: 5 },
         { id: "qr-sec", type: "qr", label: "Security QR", field: "orderReference", x: 55, y: 33, width: 16, height: 16, zIndex: 6 },
-        { id: "signature-box", type: "text", label: "Inspector Stamp", content: "APPROVED SLIP", x: 73, y: 33, width: 14, height: 16, zIndex: 7, style: { fontSize: 6, fontWeight: 800, highlight: true, backgroundColor: "#ecfdf5", color: "#047857", alignment: "center" } }
+        { id: "signature-box", type: "text", label: "Inspector Stamp", value: "APPROVED SLIP", x: 73, y: 33, width: 14, height: 16, zIndex: 7, style: { fontSize: 6, fontWeight: 800, highlight: true, backgroundColor: "#ecfdf5", color: "#047857", alignment: "center" } }
       ]
     },
     {
