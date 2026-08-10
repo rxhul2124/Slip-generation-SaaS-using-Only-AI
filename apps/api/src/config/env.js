@@ -41,7 +41,7 @@ export const env = {
   apiUrl: cleanStr(process.env.API_URL, "http://localhost:5000/api/v1"),
   jwtAccessSecret: strongSecret("JWT_ACCESS_SECRET"),
   jwtRefreshSecret: strongSecret("JWT_REFRESH_SECRET"),
-  jwtAccessExpiresIn: cleanStr(process.env.JWT_ACCESS_EXPIRES_IN, "15m"),
+  jwtAccessExpiresIn: cleanStr(process.env.JWT_ACCESS_EXPIRES_IN, "7d"),
   jwtRefreshExpiresIn: cleanStr(process.env.JWT_REFRESH_EXPIRES_IN, "30d"),
   cookieSecret: strongSecret("COOKIE_SECRET"),
   csrfSecret: strongSecret("CSRF_SECRET"),

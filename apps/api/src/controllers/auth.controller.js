@@ -13,13 +13,14 @@ const cookieOptions = {
 };
 
 function setAuthCookies(res, tokens, rememberMe = false) {
+  const maxAge = (rememberMe ? 30 : 7) * 24 * 60 * 60 * 1000;
   res.cookie("accessToken", tokens.accessToken, {
     ...cookieOptions,
-    maxAge: 15 * 60 * 1000
+    maxAge
   });
   res.cookie("refreshToken", tokens.refreshToken, {
     ...cookieOptions,
-    maxAge: (rememberMe ? 30 : 7) * 24 * 60 * 60 * 1000
+    maxAge
   });
 }
 
