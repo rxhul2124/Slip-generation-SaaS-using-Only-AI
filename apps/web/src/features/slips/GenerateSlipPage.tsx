@@ -196,7 +196,7 @@ export function GenerateSlipPage() {
   const selectedTemplate = templateOptions.find((item) => item._id === templateId);
   const slipTypeDefinition = getSlipTypeDefinition(slipType);
   const slipLimit = limitsFor(company?.plan).slipsPerMonth;
-  const slipLimitReached = slipLimit !== Infinity && (slips.data?.data?.length || 0) >= slipLimit;
+  const slipLimitReached = slipLimit !== null && slipLimit !== undefined && (slips.data?.data?.length || 0) >= slipLimit;
   const canCreateSlip = Boolean(selectedCustomer && selectedProduct && selectedTemplate && quantity > 0 && !slipLimitReached);
   const weightPerPiece = selectedProduct?.weight?.value || 0;
   const totalWeightValue = Number((weightPerPiece * quantity).toFixed(3));
@@ -402,8 +402,9 @@ export function GenerateSlipPage() {
             <Button variant="outline" onClick={reset}>
               <RotateCcw className="h-4 w-4" /> Reset
             </Button>
-            <Button onClick={() => createSlip.mutate()} disabled={createSlip.isPending || !canCreateSlip}>
-              <Save className="h-4 w-4" /> Create Slip {slipLimitReached ? <UpgradeBadge label="Pro" /> : null}
+            <Button onClick={() => createSlip.mutate()} loading={createSlip.isPending} disabled={!canCreateSlip}>
+              {!createSlip.isPending && <Save className="h-4 w-4" />}
+              {createSlip.isPending ? "Creating..." : "Create Slip"} {slipLimitReached ? <UpgradeBadge label="Pro" /> : null}
             </Button>
           </>
         }

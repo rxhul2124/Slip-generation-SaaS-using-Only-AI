@@ -1,13 +1,30 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { changePlan, getBilling, plans } from "../services/billing.service.js";
+import { cancelSubscription, createSubscription, getBilling, processWebhook } from "../services/billing.service.js";
 
 export const show = asyncHandler(async (req, res) => {
-  const billing = await getBilling(req.companyId);
-  res.json({ status: "success", data: { billing, plans } });
+  const companyId = req.companyId || req.user?.company;
+  const data = await getBilling(companyId);
+  res.json({ status: "success", data });
 });
 
-export const updatePlan = asyncHandler(async (req, res) => {
-  const billing = await changePlan(req.companyId, req.body.plan, req.body.provider);
-  await req.audit?.({ plan: req.body.plan, provider: req.body.provider }, billing._id.toString());
-  res.json({ status: "success", data: billing });
+export const createSubscriptionOrder = asyncHandler(async (req, res) => {
+  const companyId = req.companyId || req.user?.company;
+  const planKey = req.body.plan;
+  const result = await createSubscription(companyId, planKey);
+  res.json({ status: "success", data: result });
+});
+
+export const cancelSub = asyncHandler(async (req, res) => {
+  const companyId = req.companyId || req.user?.company;
+  const result = await cancelSubscription(companyId);
+  res.json({ status: "success", data: result });
+});
+
+export const webhook = asyncHandler(async (req, res) => {
+  const signature = req.headers["x-razorpay-signature"];
+  const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
+  const rawBody = req.rawBody || JSON.stringify(req.body);
+
+  const result = await processWebhook(rawBody, signature, secret, req.body);
+  res.json({ status: "success", data: result });
 });

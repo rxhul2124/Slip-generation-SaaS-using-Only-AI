@@ -1,11 +1,17 @@
 import { Router } from "express";
-import { show, updatePlan } from "../controllers/billing.controller.js";
+import { cancelSub, createSubscriptionOrder, show, webhook } from "../controllers/billing.controller.js";
 import { requireAuth } from "../middleware/auth.js";
 import { requireAtLeast } from "../middleware/rbac.js";
-import { audit } from "../middleware/audit.js";
 
 export const billingRouter = Router();
 
+// Webhook endpoint (signature verified inside webhook controller/service)
+billingRouter.post("/webhook", webhook);
+billingRouter.post("/webhook/razorpay", webhook);
+
+// Authenticated billing routes
 billingRouter.use(requireAuth);
 billingRouter.get("/", show);
-billingRouter.post("/plan", requireAtLeast("owner"), audit("billing.change_plan", "billing"), updatePlan);
+billingRouter.post("/create-subscription", requireAtLeast("owner"), createSubscriptionOrder);
+billingRouter.post("/cancel-subscription", requireAtLeast("owner"), cancelSub);
+billingRouter.post("/razorpay/order", requireAtLeast("owner"), createSubscriptionOrder);

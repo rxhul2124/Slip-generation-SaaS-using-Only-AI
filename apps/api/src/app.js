@@ -11,7 +11,14 @@ export function createApp() {
   const app = express();
 
   applySecurity(app);
-  app.use(express.json({ limit: "5mb" }));
+  app.use(
+    express.json({
+      limit: "5mb",
+      verify: (req, _res, buf) => {
+        req.rawBody = buf.toString();
+      }
+    })
+  );
   app.use(express.urlencoded({ extended: true, limit: "5mb" }));
   app.use(sanitizeRequest);
   app.use(apiLimiter);

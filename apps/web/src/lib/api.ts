@@ -1,9 +1,9 @@
 import type { ApiItem, ApiList, AuditLog, Backup, BillingSubscription, Preset, PrintJob, SearchResults } from "./types";
+import { useAuthStore } from "@/stores/authStore";
 
 const API_URL = import.meta.env.VITE_API_URL || "/api/v1";
 let csrfToken: string | null = null;
-
-type RequestOptions = RequestInit & { companyId?: string };
+let refreshingPromise: Promise<string | null> | null = null;
 
 async function ensureCsrfToken(headers: Headers) {
   const hasBearer = headers.get("Authorization")?.startsWith("Bearer ");
@@ -15,6 +15,43 @@ async function ensureCsrfToken(headers: Headers) {
     csrfToken = body.data?.csrfToken || null;
   }
 }
+
+async function refreshAccessToken(): Promise<string | null> {
+  if (refreshingPromise) return refreshingPromise;
+
+  refreshingPromise = (async () => {
+    try {
+      const res = await fetch(`${API_URL}/auth/refresh`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include"
+      });
+
+      if (!res.ok) {
+        throw new Error("Refresh failed");
+      }
+
+      const body = (await res.json()) as { data?: { accessToken?: string } };
+      const newToken = body.data?.accessToken;
+      if (newToken) {
+        localStorage.setItem("slipora.accessToken", newToken);
+        useAuthStore.setState({ accessToken: newToken });
+        return newToken;
+      }
+      return null;
+    } catch {
+      localStorage.removeItem("slipora.accessToken");
+      useAuthStore.setState({ user: null, company: null, accessToken: null, role: null });
+      return null;
+    } finally {
+      refreshingPromise = null;
+    }
+  })();
+
+  return refreshingPromise;
+}
+
+type RequestOptions = RequestInit & { companyId?: string };
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const token = localStorage.getItem("slipora.accessToken");
@@ -30,11 +67,32 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     if (csrfToken && !headers.has("Authorization")) headers.set("x-csrf-token", csrfToken);
   }
 
-  const response = await fetch(`${API_URL}${path}`, {
+  let response = await fetch(`${API_URL}${path}`, {
     ...options,
     headers,
     credentials: "include"
   });
+
+  if (
+    response.status === 401 &&
+    !path.includes("/auth/login") &&
+    !path.includes("/auth/register") &&
+    !path.includes("/auth/refresh")
+  ) {
+    const newToken = await refreshAccessToken();
+    if (newToken) {
+      headers.set("Authorization", `Bearer ${newToken}`);
+      response = await fetch(`${API_URL}${path}`, {
+        ...options,
+        headers,
+        credentials: "include"
+      });
+    } else {
+      if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
+        window.location.href = "/login";
+      }
+    }
+  }
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
@@ -124,7 +182,11 @@ export const resources = {
           billing: BillingSubscription | null;
           plans: Record<string, { name: string; monthlySlipLimit: number | string | null; price: number | null; features: string[] }>;
         }>
-      >("/billing")
+      >("/billing"),
+    createOrder: (body: { plan: string }) =>
+      api.post<ApiItem<{ order: { id: string; amount: number; currency: string }; keyId: string }>>("/billing/razorpay/order", body),
+    verifyPayment: (body: { razorpayOrderId: string; razorpayPaymentId: string; razorpaySignature: string; plan: string }) =>
+      api.post<ApiItem<BillingSubscription>>("/billing/razorpay/verify", body)
   },
   auth: {
     updateProfile: (body: { name?: string; email?: string; locale?: string; timezone?: string; avatarUrl?: string }) =>

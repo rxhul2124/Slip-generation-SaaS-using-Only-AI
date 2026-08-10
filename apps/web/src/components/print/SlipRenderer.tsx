@@ -55,11 +55,33 @@ function watermarkSource(slip: GeneratedSlip) {
 }
 
 function ElementView({ element, slip }: { element: TemplateElement; slip: GeneratedSlip }) {
-  if (element.type === "logo") return null;
+  if (element.type === "logo") {
+    const logoUrl = watermarkSource(slip);
+    if (!logoUrl) return null;
+    return (
+      <div
+        className="absolute flex items-center justify-center overflow-hidden"
+        style={{
+          left: mmToCssPx(element.x),
+          top: mmToCssPx(element.y),
+          width: mmToCssPx(element.width),
+          height: mmToCssPx(element.height),
+          transform: `rotate(${element.rotate || 0}deg)`,
+          zIndex: element.zIndex || 1
+        }}
+      >
+        <img src={logoUrl} alt="" className="max-h-full max-w-full object-contain" />
+      </div>
+    );
+  }
 
   const highlighted = boolStyle(element, "highlight");
-  const borderColor = stringStyle(element, "borderColor", highlighted ? "#f59e0b" : "#111827");
+  const explicitBg = element.style?.backgroundColor as string | undefined;
+  const explicitBorder = element.style?.borderColor as string | undefined;
+  const alignment = (element.style?.alignment as string) || "left";
+
   const style: CSSProperties = {
+    position: "absolute",
     left: mmToCssPx(element.x),
     top: mmToCssPx(element.y),
     width: mmToCssPx(element.width),
@@ -69,35 +91,39 @@ function ElementView({ element, slip }: { element: TemplateElement; slip: Genera
     fontSize: numericStyle(element, "fontSize", 10),
     fontWeight: numericStyle(element, "fontWeight", 700),
     color: stringStyle(element, "color", "#000000"),
-    backgroundColor: highlighted ? stringStyle(element, "backgroundColor", "#fef3c7") : undefined,
-    border: `1px solid ${borderColor}`,
-    padding: "2px 3px",
-    boxSizing: "border-box"
+    backgroundColor: explicitBg || (highlighted ? "#fef3c7" : "transparent"),
+    border: explicitBorder ? `1px solid ${explicitBorder}` : highlighted ? "1px solid #f59e0b" : "none",
+    padding: "2px 4px",
+    boxSizing: "border-box",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: alignment === "center" ? "center" : alignment === "right" ? "flex-end" : "flex-start",
+    textAlign: alignment as any
   };
   const value = formatElementValue(element, slip);
 
   if (element.type === "barcode") {
     return (
-      <div className="absolute flex items-center justify-center" style={style}>
-        <Barcode value={value || slip.barcodeValue} height={mmToCssPx(element.height) - 14} />
+      <div className="absolute flex items-center justify-center overflow-hidden" style={style}>
+        <Barcode value={value || slip.barcodeValue || "SLIP123456"} height={Math.max(12, mmToCssPx(element.height) - 4)} />
       </div>
     );
   }
 
   if (element.type === "qr") {
     return (
-      <div className="absolute grid place-items-center bg-white" style={style}>
-        <QRCodeSVG value={value || JSON.stringify(slip.qrPayload || {})} size={Math.min(mmToCssPx(element.width), mmToCssPx(element.height))} />
+      <div className="absolute flex items-center justify-center overflow-hidden bg-white" style={style}>
+        <QRCodeSVG value={value || JSON.stringify(slip.qrPayload || {})} size={Math.min(mmToCssPx(element.width) - 2, mmToCssPx(element.height) - 2)} />
       </div>
     );
   }
 
   if (element.type === "line") {
-    return <div className="absolute border-t" style={{ ...style, borderColor: stringStyle(element, "borderColor", "#000000") }} />;
+    return <div className="absolute border-t" style={{ ...style, borderTop: `1px solid ${explicitBorder || "#000000"}` }} />;
   }
 
   if (element.type === "box") {
-    return <div className="absolute border" style={{ ...style, borderColor: stringStyle(element, "borderColor", "#000000") }} />;
+    return <div className="absolute border" style={{ ...style, border: `1px solid ${explicitBorder || "#000000"}` }} />;
   }
 
   return (
@@ -315,12 +341,12 @@ export function SlipRenderer({ slip, scale = 1 }: { slip: GeneratedSlip; scale?:
           />
         ) : null}
         <div style={{ position: "relative", zIndex: 1, width: "100%", height: "100%" }}>
-          {template.layoutMode === "blocks" ? (
-            <StructuredSlipView slip={slip} />
-          ) : template.renderer === "industrial" ? (
-            <IndustrialSlipView slip={slip} />
-          ) : (
+          {template.elements && template.elements.length > 0 ? (
             template.elements.map((element) => <ElementView key={element.id} element={element} slip={slip} />)
+          ) : template.layoutMode === "blocks" ? (
+            <StructuredSlipView slip={slip} />
+          ) : (
+            <IndustrialSlipView slip={slip} />
           )}
         </div>
       </div>

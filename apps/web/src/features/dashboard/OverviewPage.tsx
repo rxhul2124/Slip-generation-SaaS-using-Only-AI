@@ -73,7 +73,7 @@ export function OverviewPage() {
         <MetricCard label="Active printers" value="0" icon={Activity} detail="No printers connected" />
       </div>
 
-      <Card className="mt-4">
+      <Card className="mt-6">
         <CardHeader>
           <div>
             <CardTitle>Most Used</CardTitle>
@@ -98,7 +98,7 @@ export function OverviewPage() {
         </CardContent>
       </Card>
 
-      <Card className="mt-4">
+      <Card className="mt-6">
         <CardHeader>
           <div>
             <CardTitle>Recent Slip History</CardTitle>

@@ -1,30 +1,68 @@
-import { Billing } from "../models/Billing.js";
 import { Company } from "../models/Company.js";
-import { stripe, razorpay } from "../config/payments.js";
-import { AppError } from "../utils/AppError.js";
+import { PLANS_CONFIG, getPlanConfig } from "../config/plans.config.js";
+import { subscriptionService } from "./subscription.service.js";
+import { webhookService } from "./webhook.service.js";
+import { usageCounterService } from "./usageCounter.service.js";
+import { billingHistoryService } from "./billingHistory.service.js";
 
-export const plans = {
-  free: { name: "Free", monthlySlipLimit: 100, price: 0, features: ["Basic slips", "Browser print"] },
-  pro: { name: "Pro", monthlySlipLimit: Infinity, price: 2900, features: ["Unlimited slips", "Analytics", "Backups", "Thermal printing"] },
-  enterprise: { name: "Enterprise", monthlySlipLimit: Infinity, price: null, features: ["Teams", "API access", "Advanced audit", "Dedicated support"] }
-};
+export { PLANS_CONFIG, getPlanConfig };
 
 export async function getBilling(companyId) {
-  return Billing.findOne({ company: companyId });
+  const company = await Company.findById(companyId).select("plan status billing owner").lean();
+  if (!company) {
+    const err = new Error("Company not found");
+    err.statusCode = 404;
+    throw err;
+  }
+
+  const currentPlan = company.billing?.plan || company.plan || "free";
+  const planConfig = getPlanConfig(currentPlan);
+
+  // Sync counters to guarantee fresh usage numbers
+  const usage = company.billing?.usage || (await usageCounterService.syncCounters(companyId));
+  const history = await billingHistoryService.getHistoryForCompany(companyId, 10);
+
+  return {
+    companyId,
+    plan: currentPlan,
+    subscriptionStatus: company.billing?.subscriptionStatus || "active",
+    paymentStatus: company.billing?.paymentStatus || "paid",
+    isTrial: Boolean(company.billing?.isTrial),
+    trialEndsAt: company.billing?.trialEndsAt || null,
+    currentPeriodStart: company.billing?.currentPeriodStart || null,
+    currentPeriodEnd: company.billing?.currentPeriodEnd || null,
+    cancelAtPeriodEnd: Boolean(company.billing?.cancelAtPeriodEnd),
+    usage,
+    planConfig,
+    plans: PLANS_CONFIG,
+    invoices: history.map((item) => ({
+      id: item._id?.toString() || item.invoiceId || `INV-${Date.now()}`,
+      paymentId: item.paymentId || "-",
+      date: item.createdAt ? new Date(item.createdAt).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
+      amount: item.amount ? Math.round(item.amount / 100) : 0,
+      currency: item.currency || "INR",
+      status: item.status || "paid",
+      plan: item.newPlan || currentPlan
+    }))
+  };
 }
 
-export async function changePlan(companyId, plan, provider = "manual") {
-  if (!plans[plan]) throw new AppError("Unknown plan", 400);
-  if (provider === "manual") throw new AppError("Subscription changes must be confirmed by a payment provider", 403);
+export async function createSubscription(companyId, planKey) {
+  return await subscriptionService.createSubscription(companyId, planKey);
+}
 
-  if (provider === "stripe" && !stripe) throw new AppError("Stripe is not configured", 503);
-  if (provider === "razorpay" && !razorpay) throw new AppError("Razorpay is not configured", 503);
+export async function cancelSubscription(companyId) {
+  return await subscriptionService.cancelSubscription(companyId);
+}
 
-  const billing = await Billing.findOneAndUpdate(
-    { company: companyId },
-    { plan, provider, status: "active" },
-    { new: true, upsert: true }
-  );
-  await Company.findByIdAndUpdate(companyId, { plan });
-  return billing;
+export async function processWebhook(rawBody, signature, secret, payload) {
+  if (secret && signature) {
+    const isValid = webhookService.verifySignature(rawBody, signature, secret);
+    if (!isValid) {
+      const err = new Error("Invalid Razorpay webhook signature");
+      err.statusCode = 401;
+      throw err;
+    }
+  }
+  return await webhookService.processEvent(payload);
 }

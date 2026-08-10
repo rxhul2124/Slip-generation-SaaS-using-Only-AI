@@ -319,8 +319,8 @@ export function CustomersPage() {
   const plan = useAuthStore((state) => state.company?.plan);
   const limits = limitsFor(plan);
   const totalProducts = customers.reduce((sum, customer) => sum + (customer.products?.length || 0), 0);
-  const customerLimitReached = limits.customers !== Infinity && (meta?.total || 0) >= limits.customers;
-  const productLimitReached = limits.products !== Infinity && totalProducts >= limits.products;
+  const customerLimitReached = limits.customers !== null && limits.customers !== undefined && (meta?.total || 0) >= limits.customers;
+  const productLimitReached = limits.products !== null && limits.products !== undefined && totalProducts >= limits.products;
   const queryClient = useQueryClient();
   const notify = useNotificationStore((state) => state.push);
   const nameRef = useRef<HTMLInputElement | null>(null);
@@ -776,8 +776,12 @@ export function CustomersPage() {
                   </div>
                 ) : null}
 
-                <Button className="w-full" type="submit" disabled={createCustomer.isPending || updateCustomer.isPending}>
-                  {companyFormMode === "edit" ? "Update Company" : "Save Company"}
+                <Button className="w-full" type="submit" loading={createCustomer.isPending || updateCustomer.isPending}>
+                  {createCustomer.isPending || updateCustomer.isPending
+                    ? "Saving Company..."
+                    : companyFormMode === "edit"
+                      ? "Update Company"
+                      : "Save Company"}
                 </Button>
               </form>
             </CardContent>

@@ -4,11 +4,10 @@ export type Plan = BillingSubscription["plan"];
 
 export const planLimits = {
   free: {
-    sessions: 1,
     users: 1,
-    customers: 2,
-    products: 10,
-    customTemplates: 2,
+    customers: 25,
+    products: 25,
+    customTemplates: 3,
     slipsPerMonth: 50,
     features: {
       bulk: false,
@@ -21,12 +20,11 @@ export const planLimits = {
     }
   },
   pro: {
-    sessions: 3,
-    users: 5,
-    customers: Infinity,
-    products: Infinity,
-    customTemplates: Infinity,
-    slipsPerMonth: Infinity,
+    users: 10,
+    customers: 500,
+    products: 500,
+    customTemplates: 25,
+    slipsPerMonth: 2000,
     features: {
       bulk: true,
       presets: true,
@@ -38,12 +36,11 @@ export const planLimits = {
     }
   },
   enterprise: {
-    sessions: Infinity,
-    users: Infinity,
-    customers: Infinity,
-    products: Infinity,
-    customTemplates: Infinity,
-    slipsPerMonth: Infinity,
+    users: null,
+    customers: null,
+    products: null,
+    customTemplates: null,
+    slipsPerMonth: null,
     features: {
       bulk: true,
       presets: true,

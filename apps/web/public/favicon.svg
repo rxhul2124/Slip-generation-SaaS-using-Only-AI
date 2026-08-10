@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f766e"/>
+      <stop offset="100%" stop-color="#10b981"/>
+    </linearGradient>
+    <clipPath id="clip">
+      <rect x="0" y="0" width="512" height="512" rx="96"/>
+    </clipPath>
+  </defs>
+  <rect width="512" height="512" rx="96" fill="url(#g)"/>
+  <!-- Stylised slip/receipt shape behind the S -->
+  <rect x="140" y="80" width="232" height="352" rx="24" fill="rgba(255,255,255,0.15)"/>
+  <path d="M140 408 l0 24 q0 24 24 24 l184 0 q24 0 24-24 l0-24 l-20 -16 l-20 16 l-20-16 l-20 16 l-20-16 l-20 16 l-20-16 l-20 16 l-20-16 l-20 16 z" fill="rgba(255,255,255,0.15)"/>
+  <!-- Bold S letterform -->
+  <text x="256" y="355" font-family="Inter, -apple-system, system-ui, sans-serif" font-size="300" font-weight="800" fill="white" text-anchor="middle" dominant-baseline="auto">S</text>
+</svg>

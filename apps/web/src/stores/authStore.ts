@@ -37,53 +37,6 @@ interface AuthState {
   updateUser: (partial: Partial<AuthUser>) => void;
 }
 
-const demoSessions: Record<string, Omit<AuthState, "login" | "register" | "logout" | "setSession" | "updateUser">> = {
-  "free@slipora.example": {
-    user: { id: "demo-free-user", name: "Free Tier Owner", email: "free@slipora.example" },
-    company: { id: "demo-free-company", name: "Free Tier Workspace", plan: "free" },
-    accessToken: "demo-free-session",
-    role: "owner"
-  },
-  "pro@slipora.example": {
-    user: {
-      id: "demo-pro-user",
-      name: "Pro Tier Owner",
-      email: "pro@slipora.example",
-      signatureProfile: {
-        fullName: "Tarun",
-        role: "Dispatch Executive",
-        employeeId: "EMP-104",
-        signatureText: "Tarun"
-      }
-    },
-    company: { id: "demo-pro-company", name: "Pro Tier Workspace", plan: "pro" },
-    accessToken: "demo-pro-session",
-    role: "owner"
-  },
-  "enterprise@slipora.example": {
-    user: { id: "demo-enterprise-user", name: "Enterprise Owner", email: "enterprise@slipora.example" },
-    company: { id: "demo-enterprise-company", name: "Enterprise Workspace", plan: "enterprise" },
-    accessToken: "demo-enterprise-session",
-    role: "owner"
-  },
-  "ops@slipora.example": {
-    user: {
-      id: "demo-user",
-      name: "Tanuj Operations",
-      email: "ops@slipora.example",
-      signatureProfile: {
-        fullName: "Tarun",
-        role: "Dispatch Executive",
-        employeeId: "EMP-104",
-        signatureText: "Tarun"
-      }
-    },
-    company: { id: "demo-company", name: "Fast Tech Fastners", plan: "pro" },
-    accessToken: "demo-local-session",
-    role: "owner"
-  }
-};
-
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
@@ -99,36 +52,18 @@ export const useAuthStore = create<AuthState>()(
         user: state.user ? { ...state.user, ...partial } : null
       })),
       login: async (email, password, rememberMe) => {
-        try {
-          const response = await api.post<{
-            data: { user: AuthUser; company: Company; accessToken: string };
-          }>("/auth/login", { email, password, rememberMe });
-          localStorage.setItem("slipora.accessToken", response.data.accessToken);
-          set({ ...response.data, role: "owner" });
-        } catch (error) {
-          const demoSession = password === "ChangeMe123!" ? demoSessions[email.toLowerCase()] : undefined;
-          if (!demoSession) throw error;
-          localStorage.setItem("slipora.accessToken", demoSession.accessToken || "");
-          set(demoSession);
-        }
+        const response = await api.post<{
+          data: { user: AuthUser; company: Company; accessToken: string };
+        }>("/auth/login", { email, password, rememberMe });
+        localStorage.setItem("slipora.accessToken", response.data.accessToken);
+        set({ ...response.data, role: "owner" });
       },
       register: async (payload) => {
-        try {
-          const response = await api.post<{
-            data: { user: AuthUser; company: Company; accessToken: string };
-          }>("/auth/register", payload);
-          localStorage.setItem("slipora.accessToken", response.data.accessToken);
-          set({ ...response.data, role: "owner" });
-        } catch {
-          const localSession = {
-            user: { id: "local-owner", name: payload.name, email: payload.email },
-            company: { id: "local-company", name: payload.companyName, plan: "free" as const },
-            accessToken: "demo-local-session",
-            role: "owner"
-          };
-          localStorage.setItem("slipora.accessToken", localSession.accessToken);
-          set(localSession);
-        }
+        const response = await api.post<{
+          data: { user: AuthUser; company: Company; accessToken: string };
+        }>("/auth/register", payload);
+        localStorage.setItem("slipora.accessToken", response.data.accessToken);
+        set({ ...response.data, role: "owner" });
       },
       logout: async () => {
         await api.post("/auth/logout").catch(() => undefined);
@@ -138,9 +73,9 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: "slipora.auth",
-      version: 3,
+      version: 4,
       migrate: (persisted, version) => {
-        if (version < 3) {
+        if (version < 4) {
           localStorage.removeItem("slipora.accessToken");
           return { user: null, company: null, accessToken: null, role: null };
         }

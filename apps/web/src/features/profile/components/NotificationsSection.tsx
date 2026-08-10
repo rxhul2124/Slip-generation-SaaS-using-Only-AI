@@ -164,8 +164,8 @@ export function NotificationsSection() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.2 }}
             >
-              <Button onClick={handleSave} disabled={saving}>
-                <Save className="h-4 w-4" />
+              <Button onClick={handleSave} loading={saving}>
+                {!saving && <Save className="h-4 w-4" />}
                 {saving ? "Saving…" : "Save Notifications"}
               </Button>
               <Button variant="ghost" onClick={handleCancel} disabled={saving}>

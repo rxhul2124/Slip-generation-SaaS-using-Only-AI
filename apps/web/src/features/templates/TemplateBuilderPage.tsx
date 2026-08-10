@@ -391,6 +391,7 @@ export function TemplateBuilderPage() {
   const [referenceImage, setReferenceImage] = useState<{ src: string; name: string; opacity: number } | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const notify = useNotificationStore((state) => state.push);
   const selected = useMemo(() => template.elements.find((element) => element.id === selectedId), [template, selectedId]);
   const livePreviewSlip = useMemo(() => placeholderSlip(template), [template]);
@@ -433,14 +434,15 @@ export function TemplateBuilderPage() {
   };
 
   const saveTemplate = async () => {
-    if (localStorage.getItem("slipora.accessToken") === "demo-local-session") {
-      saveLocalTemplate(template);
-      notify({ tone: "success", title: "Template saved", body: `${template.name} was saved locally for this demo session.` });
-      navigate("/templates");
-      return;
-    }
-
     try {
+      setIsSaving(true);
+      if (localStorage.getItem("slipora.accessToken") === "demo-local-session") {
+        saveLocalTemplate(template);
+        notify({ tone: "success", title: "Template saved", body: `${template.name} was saved locally for this demo session.` });
+        navigate("/templates");
+        return;
+      }
+
       const payload = templateSavePayload(template);
       const response = isApiTemplateId(template._id) ? await resources.templates.update(template._id, payload) : await resources.templates.create(payload);
       const savedTemplate = response.data;
@@ -450,6 +452,8 @@ export function TemplateBuilderPage() {
       navigate("/templates");
     } catch (error) {
       notify({ tone: "error", title: "Save failed", body: error instanceof Error ? error.message : "The API save failed." });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -687,8 +691,9 @@ export function TemplateBuilderPage() {
             </Button>
             <Button
               onClick={() => void saveTemplate()}
+              loading={isSaving}
             >
-              <Save className="h-4 w-4" /> Save
+              {!isSaving && <Save className="h-4 w-4" />} {isSaving ? "Saving..." : "Save"}
             </Button>
           </>
         }

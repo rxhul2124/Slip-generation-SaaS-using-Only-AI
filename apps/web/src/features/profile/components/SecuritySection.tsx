@@ -190,8 +190,8 @@ export function SecuritySection() {
 
             {/* Action */}
             <div className="flex items-center gap-3 border-t border-border/50 pt-4">
-              <Button onClick={handleChangePassword} disabled={!canSubmit}>
-                <Lock className="h-4 w-4" />
+              <Button onClick={handleChangePassword} loading={saving} disabled={!canSubmit}>
+                {!saving && <Lock className="h-4 w-4" />}
                 {saving ? "Updating…" : "Update Password"}
               </Button>
               <Button variant="ghost" onClick={resetForm} disabled={saving}>
